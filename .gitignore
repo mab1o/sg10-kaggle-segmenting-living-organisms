@@ -30,7 +30,7 @@ wandb/*
 # pytorch best model and experiments
 best_model.pt
 # the config.yaml you use for your experiments
-config.yaml
+# config.yaml
 
 # Vim
 **/*.swp

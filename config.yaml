@@ -1,6 +1,7 @@
 data:
-  trainpath: '/opt/Datasets/'
-  # testpath: '/dummy/path/to/test'
+  root_dir:  '/mounts/Datasets3/2024-2025-ChallengePlankton/'
+  trainpath: '/mounts/Datasets3/2024-2025-ChallengePlankton/train/'
+  testpath:  '/mounts/Datasets3/2024-2025-ChallengePlankton/test/'
   batch_size: 256
   num_workers: 4
   valid_ratio: 0.2
