@@ -63,3 +63,20 @@ python -m torchtmpl.models
 
 and this will call the test functions in the `torchtmpl/models/__main__.py` script.
 
+## Suggested milestones
+
+Write a full basic pipeline with all the boiler plate code before going in depth.
+
+- [ ] **DATA** : write a PlanktonDataset as pytorch Dataset
+- [ ] **MODEL** : implement a basic baseline model,
+- [ ] **METRICS** : implement the basic metrics of interest, in particulier F1 score
+- [ ] **SUBMISSION** : Write the test function to generate the submission file
+- [ ] **LOG** : Consider logging your experiments to online dashboards (e.g. wandb)
+- [ ] **DCE** : Run your first experiments with basic models, basic pipelines, small set of training data, and make your first submissions
+
+Then you have your MVP (Minimal Viable Product), you can iterate on extensions.
+
+## Useful link
+
+- https://frezza.pages.centralesupelec.fr/teachml2/Supports/NeuralNetworks/02-ffn.html#/example-on-a-regression-problem-1
+- https://frezza.pages.centralesupelec.fr/teachml2/Supports/NeuralNetworks/00-intro.html#/evaluation-33/0
