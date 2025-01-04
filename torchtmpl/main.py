@@ -18,6 +18,7 @@ from . import data
 from . import models
 from . import optim
 from . import utils
+from . import patch
 from . import encoder
 
 
@@ -127,6 +128,20 @@ def train(config):
 def test(config):
     logging.info("= Start Tests")
 
+    # Test patch
+    logging.info("= Test on patch")
+    dir_path = config['data']['trainpath'] 
+
+    img_path = dir_path + 'rg20091216_scan.png.ppm'
+    logging.info(f"taille de l'image : {patch.extract_ppm_size(img_path)}")
+    img  = patch.extract_patch_from_ppm(img_path, 4000, 4000, [1240,1240])
+
+    mask_path = dir_path + 'rg20091216_mask.png.ppm'
+    logging.info(f"taille du mask : {patch.extract_ppm_size(img_path)}")
+    mask = patch.extract_patch_from_ppm(mask_path, 4000, 4000, [1240,1240])
+
+    patch.show_plankton_image(img,mask)
+
     # Test encoder
     logging.info("= Test the encoder")
     binary_to_encode = [
@@ -147,7 +162,7 @@ def test(config):
             logging.info(f"{binary} has been correctly encode to {expected_result}.")
         else :
             logging.error(f"{binary} has been incorrectly encode to {result} instead of {expected_result}.")
-    
+
 
 
 if __name__ == "__main__":
