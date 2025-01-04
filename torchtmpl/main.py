@@ -11,12 +11,14 @@ import yaml
 import wandb
 import torch
 import torchinfo.torchinfo as torchinfo
+import numpy as np
 
 # Local imports
 from . import data
 from . import models
 from . import optim
 from . import utils
+from . import encoder
 
 
 def train(config):
@@ -123,7 +125,29 @@ def train(config):
 
 
 def test(config):
-    raise NotImplementedError
+    logging.info("= Start Tests")
+
+    # Test encoder
+    logging.info("= Test the encoder")
+    binary_to_encode = [
+        "1111",
+        "111100",
+        "101101001010011000111001000011011010100010001010110110100011111100001101000000",
+        "111000100100000000100101111011010001010111101000001100110000001101011010101000"
+    ]
+    expected_results = [
+        "l",
+        "l",
+        "]:Hi3JR:fSl=0",
+        "hT0UkAGX<`=JX" 
+    ]
+    for binary, expected_result in zip(binary_to_encode,expected_results):
+        result = encoder.array_to_string(np.array(list(binary)))
+        if result == expected_result :
+            logging.info(f"{binary} has been correctly encode to {expected_result}.")
+        else :
+            logging.error(f"{binary} has been incorrectly encode to {result} instead of {expected_result}.")
+    
 
 
 if __name__ == "__main__":
