@@ -67,7 +67,7 @@ and this will call the test functions in the `torchtmpl/models/__main__.py` scri
 
 Write a full basic pipeline with all the boiler plate code before going in depth.
 
-- [ ] **DATA** : write a PlanktonDataset as pytorch Dataset
+- [x] **DATA** : write a PlanktonDataset as pytorch Dataset
 - [ ] **MODEL** : implement a basic baseline model,
 - [ ] **METRICS** : implement the basic metrics of interest, in particulier F1 score
 - [ ] **SUBMISSION** : Write the test function to generate the submission file

@@ -8,7 +8,7 @@ of an image by shifting a file pointer.
 import numpy as np
 import matplotlib.pyplot as plt
 
-def show_plankton_image(img, mask):
+def show_plankton_image(img, mask, image_name = "plankton_sample.png"):
     """
     Display an image and its mask side by side
 
@@ -29,12 +29,10 @@ def show_plankton_image(img, mask):
     plt.axis("off")
 
     plt.tight_layout()
-    plt.savefig("plankton_sample.png", bbox_inches="tight", dpi=300)
+    plt.savefig(image_name, bbox_inches="tight", dpi=300)
     
-    try :
-        plt.show()
-    finally:
-        pass
+    # plt.show()
+    # UserWarning: FigureCanvasAgg is non-interactive, and thus cannot be shown
 
 
 def extract_ppm_size(ppm_path):

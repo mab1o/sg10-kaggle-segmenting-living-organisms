@@ -18,8 +18,6 @@ from . import data
 from . import models
 from . import optim
 from . import utils
-from . import patch
-from . import encoder
 
 
 def train(config):
@@ -126,43 +124,7 @@ def train(config):
 
 
 def test(config):
-    logging.info("= Start Tests")
-
-    # Test patch
-    logging.info("= Test on patch")
-    dir_path = config['data']['trainpath'] 
-
-    img_path = dir_path + 'rg20091216_scan.png.ppm'
-    logging.info(f"taille de l'image : {patch.extract_ppm_size(img_path)}")
-    img  = patch.extract_patch_from_ppm(img_path, 4000, 4000, [1240,1240])
-
-    mask_path = dir_path + 'rg20091216_mask.png.ppm'
-    logging.info(f"taille du mask : {patch.extract_ppm_size(img_path)}")
-    mask = patch.extract_patch_from_ppm(mask_path, 4000, 4000, [1240,1240])
-
-    patch.show_plankton_image(img,mask)
-
-    # Test encoder
-    logging.info("= Test the encoder")
-    binary_to_encode = [
-        "1111",
-        "111100",
-        "101101001010011000111001000011011010100010001010110110100011111100001101000000",
-        "111000100100000000100101111011010001010111101000001100110000001101011010101000"
-    ]
-    expected_results = [
-        "l",
-        "l",
-        "]:Hi3JR:fSl=0",
-        "hT0UkAGX<`=JX" 
-    ]
-    for binary, expected_result in zip(binary_to_encode,expected_results):
-        result = encoder.array_to_string(np.array(list(binary)))
-        if result == expected_result :
-            logging.info(f"{binary} has been correctly encode to {expected_result}.")
-        else :
-            logging.error(f"{binary} has been incorrectly encode to {result} instead of {expected_result}.")
-
+    pass
 
 
 if __name__ == "__main__":
