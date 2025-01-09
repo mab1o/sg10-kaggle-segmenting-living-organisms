@@ -48,7 +48,7 @@ def array_to_string(arr: np.array, num_bits=6, offset=48):
     """
     raveled = list(arr.ravel())
     # Pad the raveled sequence by 0's to have a size multiple of num_bits
-    raveled.extend([0] * ((num_bits - (len(raveled) % num_bits)) % num_bits))
+    raveled.extend([0] * ((num_bits - (len(raveled) % num_bits))))
     result = binary_list_to_string(raveled, num_bits, offset)
     return result
 
