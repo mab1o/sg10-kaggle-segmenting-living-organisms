@@ -54,14 +54,32 @@ Every module/script is equiped with some test functions. Although these are not 
 For example, you can call :
 
 
+```plaintext
+├── config.yaml
+├── LICENSE
+├── pyproject.toml
+├── README.md
+├── setup.py
+├── submit-slurm.py
+└── torchtmpl
+    ├── data
+    │   ├── data.py            # data management
+    │   ├── encoder.py         # utils for binary to string
+    │   ├── __init__.py        # functions exportable
+    │   ├── __main__.py        # test file
+    │   ├── patch.py           # utils to extract patch from a image
+    │   ├── PlanktonDataset.py # dataset inherited from torch.Dataset
+    │   └── submission.py      # utils for submission
+    ├── __init__.py
+    ├── main.py
+    ├── models
+    │   ├── base_models.py
+    │   ├── cnn_models.py
+    │   ├── __init__.py        # functions exportable
+    │   └── __main__.py        # test file
+    ├── optim.py
+    └── utils.py
 ```
-python3 -m virtualenv venv
-source venv/bin/activate
-python -m pip install .
-python -m torchtmpl.models
-```
-
-and this will call the test functions in the `torchtmpl/models/__main__.py` script.
 
 ## Suggested milestones
 

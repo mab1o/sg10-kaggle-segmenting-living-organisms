@@ -1,10 +1,3 @@
-'''
-This script illustrates how to encode your prediction into the expected submission format. 
-
-The generate_sample_files() generates 2 random arrays and write them into the expected submission format 
-where ASCII characters encodes the predictions of 6 consecutive pixels.
-'''
-
 # External imports
 import numpy as np
 
@@ -12,7 +5,7 @@ def binary_list_to_string(binary_list, num_bits=6, offset=48):
     """
     Convert a list of binary digits (0s and 1s) into a string, where every 6 bits represent a character.
 
-    Arguments:
+    Args:
         binary_list: List of integers (0 or 1) representing binary digits.
         num_bits: Number of bits to use for encoding.
         offset: Offset to add to the integer representation of the binary list.
@@ -38,7 +31,9 @@ def binary_list_to_string(binary_list, num_bits=6, offset=48):
 
 def array_to_string(arr: np.array, num_bits=6, offset=48):
     """
-    Arguments:
+    Transform array of 0 and 1 to a ASCII string
+
+    Args:
         arr: a nd array of 0's and 1's
         num_bits: number of bits to use for encoding
         offset: offset to add to the integer representation of the binary list
@@ -54,6 +49,16 @@ def array_to_string(arr: np.array, num_bits=6, offset=48):
 
 
 def generate_sample_files(img_height, img_width):
+    """
+    Generate sample image convert into csv file
+
+    Args:
+        img_height: image height
+        img_width: image width
+
+    Returns:
+        None
+    """
     with open("submission.csv", "w") as f:
         f.write("Id,Target\n")
 

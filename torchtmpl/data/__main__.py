@@ -1,24 +1,20 @@
 # Standard imports
 import logging
 import sys
-import os
-import pathlib
 
 # External imports
 import yaml
-import wandb
-import torch
-import torchinfo.torchinfo as torchinfo
 import numpy as np
 
 # Local imports
-from . import encoder
 from . import patch
 from . import PlanktonDataset
+from . import encoder
+from . import submission
 
 def test_patch(config) :
     # Test patch
-    logging.info("= Test on patch")
+    logging.info("\n= Test on patch")
     dir_path = config['data']['trainpath'] 
 
     img_path = dir_path + 'rg20091216_scan.png.ppm'
@@ -32,36 +28,41 @@ def test_patch(config) :
     patch.show_plankton_image(img,mask)
     logging.info("= FIN Test on patch")
 
-def test_max_patch_size_working(config) :
 
-    logging.info("= Test on patch")
+def test_PlanktonDataset_train(config):
+    logging.info("\n=Test Plankton Dataset")
     dir_path = config['data']['trainpath'] 
+    data = PlanktonDataset(dir_path,(10000,10000))
 
-    max_size_not_found = True
-    max_size = 1730
-    while(max_size_not_found) :
-
-        try: 
-            img_path = dir_path + 'rg20090114_scan.png.ppm'
-            logging.info(f"taille de l'image : {patch.extract_ppm_size(img_path)}")
-            img  = patch.extract_patch_from_ppm(img_path, 12806, 0, (max_size,max_size))
-
-            mask_path = dir_path + 'rg20090114_mask.png.ppm'
-            logging.info(f"taille du mask : {patch.extract_ppm_size(img_path)}")
-            mask = patch.extract_patch_from_ppm(mask_path, 12806, 0, (max_size,max_size))
-
-            logging.info(f"patch size of {max_size} work !!!")
-            max_size_not_found = False
-
+    logging.info(f"\nDataset size: {len(data)}")
+    logging.info(f"\nOrigin Path: {data.image_mask_dir}")
+    logging.info(f"\nPatch size: {data.patch_size }")
+    logging.info(f"\nImage files: {data.image_files}")
+    logging.info(f"\nMask files: {data.mask_files}")
+    logging.info(f"\nPathes per image : {data.image_patches}")
+    logging.info(f"\nSize of each image: {data.images_size}")
+    
+    logging.info(f"\nImpression des patchs")
+    num_patches_first_image = data.image_patches[0][0] * data.image_patches[0][1]
+    for i in range(num_patches_first_image):
+        logging.info(f"Processing index {i}...")
+        try:
+            data.show_plankton_patch_image(i, f"image_{i}")
         except Exception as e:
-            logging.info(f"patch size of {max_size} doesn't work.")
-            max_size -= 1
+            logging.info(f"Error at index {i}: {e}")
 
-    logging.info("= FIN Test on patch")
+    logging.info(f"\nImpression de l'image original")
+    dir_path = config['data']['trainpath']
+    img  = patch.extract_patch_from_ppm(dir_path + data.image_files[0], 0, 0, (22807,14529))
+    mask = patch.extract_patch_from_ppm(dir_path + data.mask_files[0], 0, 0, (22807,14529))
+    patch.show_plankton_image(img, mask, f"image_original")
+
+    logging.info("= FIN Test on Dataset")
+
 
 def test_encoder(config):
     # Test encoder
-    logging.info("= Test the encoder")
+    logging.info("\n= Test the encoder")
     binary_to_encode = [
         "1111",
         "111100",
@@ -83,36 +84,41 @@ def test_encoder(config):
     logging.info("= FIN Test on encoder")
 
 
-def test_PlanktonDataset(config):
-    logging.info("=Test Plankton Dataset")
-    dir_path = config['data']['trainpath'] 
-    data = PlanktonDataset(dir_path,(10000,10000))
+def test_reconstruction_image(config):
+    logging.info("\n=Test Submission reconstruct")
 
-    logging.info(f"\ntaille du dataset : {len(data)}")
-    logging.info(f"\nPath d'origin des images : {data.image_mask_dir}")
-    logging.info(f"\nTaille du patch : {data.patch_size }")
-    logging.info(f"\nFichiers images extraits : {data.image_files}")
-    logging.info(f"\nFichier mask extrait : {data.mask_files}")
-    logging.info(f"\nPathes creer sur chaque image : {data.image_patches}")
-    logging.info(f"\nTaille respective de chaque image : {data.images_size}")
+    logging.info("\nCharge Data")
+    dir_path = config['data']['trainpath']
+    patch_size = (10000,10000)
+    ds = PlanktonDataset(dir_path,patch_size)
     
-    logging.info(f"\nImpression des patchs")
-    num_patches_first_image = data.image_patches[0][0] * data.image_patches[0][1]
-    for i in range(num_patches_first_image):
-        logging.info(f"Processing index {i}...")
-        try:
-            image, mask = data[i]
-            patch.show_plankton_image(image, mask, f"image_{i}")
-        except Exception as e:
-            logging.info(f"Error at index {i}: {e}")
-
     logging.info(f"\nImpression de l'image original")
     dir_path = config['data']['trainpath']
-    img  = patch.extract_patch_from_ppm(dir_path + data.image_files[0], 0, 0, (14529,22807))
-    mask = patch.extract_patch_from_ppm(dir_path + data.mask_files[0], 0, 0, (14529,22807))
-    patch.show_plankton_image(img, mask, f"image_original")
+    img  = patch.extract_patch_from_ppm(dir_path + ds.image_files[1], 0, 0, ds.images_size[1])
+    mask = patch.extract_patch_from_ppm(dir_path + ds.mask_files[1], 0, 0, ds.images_size[1])
+    patch.show_plankton_image(img, mask, "image_original_2")
 
-    logging.info("= FIN Test on Dataset")
+    logging.info(f"\nImpression de l'image reconstruite")
+    ds.show_plankton_complete_image(1, "image_reconstruct")
+
+    logging.info("\n=FIN Test Submission reconstruct")
+
+
+def test_generate_csv_file(config):
+    logging.info("\n=Test Submission formation du mask")
+
+    logging.info("\nCharge Data")
+    dir_path = config['data']['trainpath']
+    patch_size = (20000,2)
+    ds = PlanktonDataset(dir_path,patch_size)
+
+    logging.info("\nMake csv file")
+    _, mask = ds[10000]
+    _, mask1 = ds[11000]
+    print(mask)
+    submission.generate_submission_file([mask, mask1])
+
+    logging.info("\n= FIN Test Submission formation du mask")
 
 
 if __name__ == "__main__":
@@ -125,7 +131,9 @@ if __name__ == "__main__":
     logging.info("Loading {}".format(sys.argv[1]))
     config = yaml.safe_load(open(sys.argv[1], "r"))
     
-    # test_encoder(config)
-    # test_patch(config)
-    # test_max_patch_size_working(config)
-    test_PlanktonDataset(config)
+    #test_encoder(config)
+    #test_patch(config)
+    #test_encoder(config)
+    #test_generate_csv_file(config)
+    #test_PlanktonDataset_train(config)
+    test_reconstruction_image(config)

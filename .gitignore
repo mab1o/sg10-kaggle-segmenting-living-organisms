@@ -4,6 +4,8 @@ __pycache__/
 
 # generated images
 image*.png
+plankton_sample.png
+submission.csv
 
 # Distribution / packaging
 .Python
