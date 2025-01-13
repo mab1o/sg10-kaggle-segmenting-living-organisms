@@ -66,7 +66,7 @@ def extract_patch_from_ppm(ppm_path, row_idx, col_idx, patch_size):
     - ppm_path: the path to the PPM image
     - row_idx: the row index of the patch
     - col_idx: the column index of the patch
-    - patch_size: the size of the patch
+    - patch_size: the size of the patch (width, height)
 
     Returns:
     - patch: the extracted patch
@@ -106,7 +106,7 @@ def extract_patch_from_ppm(ppm_path, row_idx, col_idx, patch_size):
         f.seek(first_pixel_offset)  # Seek back to the first pixel
 
         # Read all the rows of the patch from the image
-
+        patch_size=(patch_size[1],patch_size[0])
         patch = np.zeros(patch_size, dtype=dtype)
         for i in range(patch_size[0]):
             f.seek(
