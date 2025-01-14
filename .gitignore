@@ -6,6 +6,7 @@ __pycache__/
 image*.png
 plankton_sample.png
 submission.csv
+compare_mask.png
 
 # Distribution / packaging
 .Python
