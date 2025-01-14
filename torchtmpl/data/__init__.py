@@ -7,6 +7,8 @@ __main__: test file
     - test_patch(config)
     - test_PlanktonDataset_train(config)
     - test_generate_csv_file(config)
+    - test_reconstruction_image_test(config)
+    - test_compare_image_test(config)
 
 data: data management
     - show_image(X)
@@ -18,6 +20,7 @@ PlanktonDataset: dataset inherited from torch.Dataset
     - __getitem__(self, idx)
     - insert(self, mask_patch, idx = None)
     - show_plankton_patch_image(self, idx, image_name ="plankton_sample.png")
+    - show_compare_mask(self, idx, real_dataset, image_name = "compare_mask.png")
     - to_submission(self,  file_name = "submission.csv")
     - reconstruct_mask(self, image_id)
     - get_num_image(self)

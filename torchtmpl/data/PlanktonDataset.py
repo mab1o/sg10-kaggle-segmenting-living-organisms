@@ -195,6 +195,27 @@ class PlanktonDataset(Dataset):
         patch.show_plankton_image(img, mask, image_name)
 
 
+    def show_compare_mask(self, idx, real_dataset, image_name = "compare_mask.png"):
+        """
+        Show complete image of the plakton image at index idx
+
+        Args:
+            idx (int): index of the image
+            real_dataset (PlanktonDataset): dataset with real mask
+        """
+        assert idx < self.get_num_image(), "Index out of range"
+        real_mask = patch.extract_patch_from_ppm(
+            real_dataset.image_mask_dir + real_dataset.mask_files[idx], 
+            0, 0, 
+            real_dataset.images_size[idx])
+        real_mask = np.where(real_mask < 8, 0, 1)
+        
+        predict_mask = self.reconstruct_mask(idx)
+        predict_mask += real_mask
+
+        patch.show_plankton_mask(real_mask, predict_mask, image_name)
+
+
     def show_plankton_complete_image(self, idx, image_name ="plankton_sample.png"):
         """
         Show complete image of the plakton image at index idx

@@ -35,6 +35,30 @@ def show_plankton_image(img, mask, image_name = "plankton_sample.png"):
     # UserWarning: FigureCanvasAgg is non-interactive, and thus cannot be shown
 
 
+def show_plankton_mask(real_mask, predict_mask, image_name = "compare_mask.png"):
+    """
+    Display an real mask and its prediction side by side
+
+    mask is either (H, W)
+    """
+
+    plt.subplot(1, 2, 1)
+    plt.imshow(real_mask, interpolation="none", cmap="tab20c")
+    plt.title("Real Mask")
+    plt.axis("off")
+
+    plt.subplot(1, 2, 2)
+    plt.imshow(predict_mask, interpolation="none", cmap="tab20c")
+    plt.title("Predict Mask")
+    plt.axis("off")
+
+    plt.tight_layout()
+    plt.savefig(image_name, bbox_inches="tight", dpi=300)
+    
+    # plt.show()
+    # UserWarning: FigureCanvasAgg is non-interactive, and thus cannot be shown
+
+
 def extract_ppm_size(ppm_path):
     """
     Extract a size from a PPM image

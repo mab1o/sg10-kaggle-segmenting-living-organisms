@@ -151,6 +151,31 @@ def test_reconstruction_image_test(config):
     logging.info("\n=FIN Test Submission reconstruct test")
 
 
+def test_compare_image_test(config):
+    logging.info("\n=Test Compare reconstruct test")
+
+    logging.info("\nCharge Data train")
+    dir_path = config['data']['trainpath']
+    patch_size = (10000,10000)
+    ds_train = PlanktonDataset(dir_path,patch_size)
+
+    logging.info("\nCharge Data test")
+    ds_test = PlanktonDataset(dir_path,patch_size, mode='test')
+
+    num_patches_first_image = ds_train.image_patches[0][0] * ds_train.image_patches[0][1]
+    for i in range(num_patches_first_image):
+        logging.info(f"Processing index {i}...")
+        try:
+            ds_test.insert(ds_train[i][1])
+        except Exception as e:
+            logging.info(f"Error at index {i}: {e}")
+
+    logging.info(f"\nImpression de l'image reconstruite")
+    ds_test.show_compare_mask(0, ds_train)
+
+    logging.info("\n=FIN Test compare reconstruct test")
+
+
 if __name__ == "__main__":
     logging.basicConfig(stream=sys.stdout, level=logging.INFO, format="%(message)s")
 
@@ -167,4 +192,5 @@ if __name__ == "__main__":
     #test_generate_csv_file(config)
     #test_PlanktonDataset_train(config)
     #test_reconstruction_image(config)
-    test_reconstruction_image_test(config)
+    # test_reconstruction_image_test(config)
+    test_compare_image_test(config)

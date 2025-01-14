@@ -53,6 +53,16 @@ Every module/script is equiped with some test functions. Although these are not 
 
 For example, you can call :
 
+```
+python3 -m virtualenv venv
+source venv/bin/activate
+python -m pip install .
+python -m torchtmpl.models
+```
+
+and this will call the test functions in the `torchtmpl/models/__main__.py` script.
+
+## Tree
 
 ```plaintext
 ├── config.yaml
@@ -93,6 +103,7 @@ Write a full basic pipeline with all the boiler plate code before going in depth
 - [ ] **DCE** : Run your first experiments with basic models, basic pipelines, small set of training data, and make your first submissions
 
 Then you have your MVP (Minimal Viable Product), you can iterate on extensions.
+
 
 ## Useful link
 
