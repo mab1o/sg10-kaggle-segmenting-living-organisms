@@ -1,10 +1,9 @@
 # External imports
 import torch
 
-from torchtmpl.data import PlanktonDataset
-
 # Local imports
 from . import encoder
+
 
 def image_reconstruction(patches, image_size, patch_size):
     """
@@ -107,25 +106,4 @@ def generate_submission_file(predictions, file_name = "submission.csv"):
             for idx_row, row in enumerate(predictions[mask_id]):
                 row_str = encoder.array_to_string(row.numpy())
                 f.write(f"{mask_id}_{idx_row},\"{row_str}\"\n")
-
-
-def to_submission(data : PlanktonDataset, patches,  file_name = "submission.csv") :
-    """
-    Rebuild mask and write it in a CSV file
-
-    Args :
-        data (PlanktonDataset): Dataset of the images
-        patches (list of torch.Tensor): mask patches to be rebuild  
-        file_name(string): file name at "submission.csv" per default
-    """
-    # Rebuild mask
-    predictions = []
-    for image_id in range(len(data.image_files)):
-        image_size = data.images_size[image_id]
-        patch_size = data.patch_size[image_id]
-        prediction = image_reconstruction(patches, image_size, patch_size)
-        predictions.append(prediction)
-    
-    # Write Mask in csv file
-    generate_submission_file(predictions, file_name = "submission.csv")
-    
+   

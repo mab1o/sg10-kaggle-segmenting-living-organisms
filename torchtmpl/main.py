@@ -11,7 +11,6 @@ import yaml
 import wandb
 import torch
 import torchinfo.torchinfo as torchinfo
-import numpy as np
 
 # Local imports
 from . import data
@@ -58,7 +57,7 @@ def train(config):
 
     # Build the callbacks
     logging_config = config["logging"]
-    # Let us use as base logname the class name of the modek
+    # Let us use as base logname the class name of the model
     logname = model_config["class"]
     logdir = utils.generate_unique_logpath(logging_config["logdir"], logname)
     if not os.path.isdir(logdir):
@@ -71,7 +70,8 @@ def train(config):
         yaml.dump(config, file)
 
     # Make a summary script of the experiment
-    input_size = next(iter(train_loader))[0].shape
+    logging.info("= Summary")
+    input_size = next(iter(train_loader))[0].shape # take too mush time
     summary_text = (
         f"Logdir : {logdir}\n"
         + "## Command \n"
@@ -98,6 +98,7 @@ def train(config):
         model, str(logdir / "best_model.pt"), min_is_best=True
     )
 
+    logging.info(f"= Start training")
     for e in range(config["nepochs"]):
         # Train 1 epoch
         train_loss = utils.train(model, train_loader, loss, optimizer, device)
@@ -124,7 +125,42 @@ def train(config):
 
 
 def test(config):
-    pass
+    use_cuda = torch.cuda.is_available()
+    device = torch.device("cuda") if use_cuda else torch.device("cpu")
+    model_name = config['test']['model_path'] + config['test']['model_name']
+    config = yaml.safe_load(open(config['test']['model_path']+ config['test']['model_config'], "r"))
+
+    logging.info("= Dataset")
+    dataset_test = data.PlanktonDataset(
+        config['data']['trainpath'],config['data']['patch_size'],mode='test')
+    dataset_train = data.PlanktonDataset(
+        config['data']['trainpath'],config['data']['patch_size'])
+    input_size = tuple(dataset_train[0][0].shape)
+    num_classes = input_size[0]
+
+    print(len(dataset_test))
+    print(len(dataset_train))
+
+    logging.info("= Model")
+    model_config = config["model"]
+    model = models.build_model(model_config, input_size, num_classes)
+    model.to(device)
+    model.load_state_dict(torch.load(model_name))
+    model.eval()
+
+    logging.info("= Predict first image")
+    for idx_img in range(dataset_test.image_patches[0][0]*dataset_test.image_patches[0][1]):
+        logging.info(f"  - predict mask {idx_img}")
+        image = dataset_test[idx_img].unsqueeze(0).to(device)
+        dataset_test.insert(model.predict(image))
+    
+    print(dataset_test.mask_files[0][0])
+
+    logging.info("= Reconstruct image")
+    dataset_test.show_plankton_complete_image(0,"image_reconstruct_1.png")
+
+    logging.info("= Compare masks")
+    dataset_test.show_compare_mask(0,dataset_train,"compare_mask_1.png")
 
 
 if __name__ == "__main__":

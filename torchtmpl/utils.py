@@ -86,8 +86,8 @@ def train(model, loader, f_loss, optimizer, device, dynamic_display=True):
 
         inputs, targets = inputs.to(device), targets.to(device)
 
-        # Compute the forward propagation
-        outputs = model(inputs)
+        # Forward pass
+        outputs = model(inputs).squeeze(1)
 
         loss = f_loss(outputs, targets)
 
@@ -128,7 +128,7 @@ def test(model, loader, f_loss, device):
         inputs, targets = inputs.to(device), targets.to(device)
 
         # Compute the forward propagation
-        outputs = model(inputs)
+        outputs = model(inputs).squeeze(1)
 
         loss = f_loss(outputs, targets)
 

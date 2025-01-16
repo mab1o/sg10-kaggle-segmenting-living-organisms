@@ -22,6 +22,7 @@ class PlanktonDataset(Dataset):
         assert patch_size[0] > 0 and patch_size[1] > 0 , "patch_size should be superior to 0."
 
         self.mode = mode
+        self.categories = ['non living','living']
         self.image_mask_dir = image_mask_dir
         self.patch_size = patch_size
         self.image_files = sorted([f for f in os.listdir(image_mask_dir) if f.endswith('_scan.png.ppm')])
@@ -56,14 +57,9 @@ class PlanktonDataset(Dataset):
         """
         assert width  > patch_size[0], f" Impossible la patch est plus grand que l'image {patch_size[0]} > {width}"
         assert height > patch_size[1], f" Impossible la patch est plus grand que l'image {patch_size[1]} > {height}"
-
-        num_patches_x = width // patch_size[0]
-        if width % patch_size[0] != 0 :
-            num_patches_x += 1
         
-        num_patches_y = height // patch_size[1]
-        if height % patch_size[1] != 0 :
-            num_patches_y += 1
+        num_patches_x = -(-width // patch_size[0]) 
+        num_patches_y = -(-height // patch_size[1])
 
         self.image_patches.append((num_patches_x, num_patches_y))
 
@@ -81,7 +77,7 @@ class PlanktonDataset(Dataset):
             patch (torch.Tensor): Image patch of size (C, patch_size[0], patch_size[1]).
             mask_patch (torch.Tensor): Corresponding mask patch.
         """
-        assert idx < len(self), f"idx out of range"
+        assert idx < len(self), f"Index out of range: {idx}"
 
         # Determine which image the idx belongs to
         current_idx = idx
@@ -94,22 +90,21 @@ class PlanktonDataset(Dataset):
         # Determine start row and column index
         image_row, image_column = self._find_row_column(image_idx, current_idx)
 
-        # Load the image and mask
+        # Load the image
         image_path = os.path.join(self.image_mask_dir, self.image_files[image_idx])
-        mask_path  = os.path.join(self.image_mask_dir, self.mask_files[image_idx])
-
-        # Extract the patch using the external function
         image_patch = patch.extract_patch_from_ppm(image_path, image_row, image_column, self.patch_size)
-        image_patch = torch.from_numpy(image_patch) #.unsqueeze(0).float()
+        image_patch = torch.from_numpy(image_patch).unsqueeze(0).float()
 
         if (self.mode == 'test'):
             return image_patch
   
-        return image_patch, self._get_mask_for_train(mask_path, image_row, image_column)
+        return image_patch, self._get_mask_for_train(image_idx, image_row, image_column)
 
 
-    def _get_mask_for_train(self, mask_path, image_row, image_column):
+    def _get_mask_for_train(self, image_idx, image_row, image_column):
         """
+        Load the mask
+
         Args:
             mask_path (str): Path to the directory containing images and mask
             image_row, image_column: image coordinates
@@ -117,12 +112,13 @@ class PlanktonDataset(Dataset):
         Returns:
             torch.Tensor of the mask
         """
+        mask_path  = os.path.join(self.image_mask_dir, self.mask_files[image_idx])
         mask_patch  = patch.extract_patch_from_ppm(mask_path, image_row, image_column, self.patch_size)
         mask_patch  = mask_patch.byteswap().view(mask_patch.dtype.newbyteorder())
 
-        # 0-7 non living == 0; 8-134 living == 1
+        # Divide living from non living : 0-7 non living == 0; 8-134 living == 1 
         mask_patch = np.where(mask_patch < 8, 0, 1)
-        mask_patch  = torch.from_numpy(mask_patch)  #.long()
+        mask_patch  = torch.from_numpy(mask_patch).float()
 
         return mask_patch
 
@@ -140,23 +136,14 @@ class PlanktonDataset(Dataset):
         """
 
         width, height = self.images_size[image_idx]
-        num_patches_x, num_patches_y = self.image_patches[image_idx]
+        num_patches_x, _ = self.image_patches[image_idx]
         patch_width, patch_height = self.patch_size
         
-        # Local patch index
         patch_x = current_idx % num_patches_x
         patch_y = current_idx // num_patches_x
 
-        # Local start row and column index
-        if (patch_y == (num_patches_y-1)):
-            image_row = height - patch_height
-        else:
-            image_row = patch_height * patch_y
-        
-        if (patch_x == (num_patches_x-1)):
-            image_column= width - patch_width
-        else :
-            image_column = patch_width * patch_x
+        image_row = min(patch_height * patch_y, height - patch_height)  # **(Simplified boundary condition)**
+        image_column = min(patch_width * patch_x, width - patch_width) 
         
         return image_row, image_column
 
@@ -170,12 +157,11 @@ class PlanktonDataset(Dataset):
             idx (int): index of where the patches is added
         """
         assert self.mode == 'test', "Dataset must be a test dataset to insert a patch"
-        if idx != None :
-            assert 0 < idx < len(self), "Index out of range"
 
-        if idx == None : 
+        if idx == None :
             self.mask_files.append(mask_patch)
         else :
+            assert 0 <= idx < len(self), "Index out of range: {idx}"
             self.mask_files[idx] = mask_patch
 
 
@@ -191,11 +177,11 @@ class PlanktonDataset(Dataset):
             img, mask = self[idx]
         else:
             img = self[idx]
-            mask = self.mask_files[idx]
+            mask = self.mask_files[idx] if idx < len(self.mask_files) else None
         patch.show_plankton_image(img, mask, image_name)
 
 
-    def show_compare_mask(self, idx, real_dataset, image_name = "compare_mask.png"):
+    def show_compare_mask(self, idx, real_dataset , image_name = "compare_mask.png"):
         """
         Show complete image of the plakton image at index idx
 
@@ -203,7 +189,9 @@ class PlanktonDataset(Dataset):
             idx (int): index of the image
             real_dataset (PlanktonDataset): dataset with real mask
         """
-        assert idx < self.get_num_image(), "Index out of range"
+        assert idx < self.get_num_image(), f"Index out of range: {idx}"
+        assert isinstance(real_dataset, PlanktonDataset), "real_dataset must be an instance of PlanktonDataset"
+
         real_mask = patch.extract_patch_from_ppm(
             real_dataset.image_mask_dir + real_dataset.mask_files[idx], 
             0, 0, 
@@ -224,6 +212,8 @@ class PlanktonDataset(Dataset):
             mask_patch (torch.Tensor): patch of a mask
             image_name (string): name of the picture
         """
+        assert idx < self.get_num_image(), f"Index out of range: {idx}"
+
         img = patch.extract_patch_from_ppm(
             self.image_mask_dir + self.image_files[idx], 
             0, 0, 
@@ -242,13 +232,11 @@ class PlanktonDataset(Dataset):
             file_name(string): file name at "submission.csv" per default
         """
         assert self.mode == 'test', "to_submission must be use for test dataset"
-
-        # Rebuild mask
-        predictions = []
-        for image_id in range(len(self.image_files)):
-            predictions.append(self.reconstruct_mask(image_id))
+        assert file_name.endswith('.csv'), "File name must end with .csv"
         
-        # Write Mask in csv file
+        predictions = [
+            self.reconstruct_mask(image_id) for image_id in range(len(self.image_files))
+        ]
         submission.generate_submission_file(predictions, file_name)
 
 
@@ -263,14 +251,10 @@ class PlanktonDataset(Dataset):
             torch.Tensor of complete mask
         """
         # Find start and end
-        id = 0
-        start_patche_id = 0
-        end_patche_id = self.image_patches[id][0]*self.image_patches[id][1]
-        
-        while id != image_id :
-            id += 1
+        start_patche_id, end_patche_id= 0, 0       
+        for id in range (image_id + 1):
             start_patche_id = end_patche_id
-            end_patche_id += self.image_patches[id][0]*self.image_patches[id][1]
+            end_patche_id  += self.image_patches[id][0]*self.image_patches[id][1]
         
         # Reconstruct mask
         image_size = self.images_size[image_id]
@@ -280,8 +264,7 @@ class PlanktonDataset(Dataset):
         else:
             patches = [self[idx_mask][1] for idx_mask in range(start_patche_id,end_patche_id)]
         
-        prediction = submission.image_reconstruction(patches, image_size, self.patch_size)
-        return prediction
+        return submission.image_reconstruction(patches, image_size, self.patch_size)
 
 
     def get_num_image(self):

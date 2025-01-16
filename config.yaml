@@ -1,18 +1,20 @@
 data:
   root_dir:  '/mounts/Datasets3/2024-2025-ChallengePlankton/'
   trainpath: '/mounts/Datasets3/2024-2025-ChallengePlankton/train/'
-  testpath:  '/mounts/Datasets3/2024-2025-ChallengePlankton/test/'
-  batch_size: 256
-  num_workers: 4
+  testpath: '/mounts/Datasets3/2024-2025-ChallengePlankton/test/'
+  batch_size: 16
+  num_workers: 2
   valid_ratio: 0.2
+  patch_size: [512,512]
 
 optim:
   algo: SGD
   params:
     lr: 0.01
 
-nepochs: 20
-loss: "CrossEntropyLoss"
+nepochs: 1
+# loss: "CrossEntropyLoss"
+loss : "BCEWithLogitsLoss"
 
 logging:
   # wandb: 
@@ -22,5 +24,13 @@ logging:
 # model:
 #   class: Linear
 model:
-  class: VanillaCNN
-  num_layers : 4
+  # class: VanillaCNN
+  # num_layers : 4
+  class: UNet
+  encoder:
+    model_name: resnet18
+
+test:
+  model_path: 'logs/UNet_0/'
+  model_name: 'best_model.pt'
+  model_config: 'config.yaml'
