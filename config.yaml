@@ -3,9 +3,9 @@ data:
   trainpath: '/mounts/Datasets3/2024-2025-ChallengePlankton/train/'
   testpath: '/mounts/Datasets3/2024-2025-ChallengePlankton/test/'
   batch_size: 16
-  num_workers: 6
+  num_workers: 2
   valid_ratio: 0.2
-  patch_size: [256,256]
+  patch_size: [512,512]
 
 optim:
   algo: Adam
@@ -19,8 +19,7 @@ scheduler:
     factor: 0.5
     patience: 3
 
-
-nepochs: 4
+nepochs: 1
 # loss: "CrossEntropyLoss"
 loss : "BCEWithLogitsLoss"
 
@@ -36,9 +35,9 @@ model:
   # num_layers : 4
   class: UNet
   encoder:
-    model_name: resnet34
+    model_name: resnet18
 
 test:
-  model_path: 'logs/UNet_13/'
+  model_path: 'logs/UNet_0/'
   model_name: 'best_model.pt'
   model_config: 'config.yaml'

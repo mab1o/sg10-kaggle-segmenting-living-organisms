@@ -1,124 +1,18 @@
-# External imports
+import numpy as np
 import torch
+from typing import List
 
-# Local imports
-from . import encoder
-import logging
-import matplotlib.pyplot as plt
-
-def image_reconstruction(patches, image_size, patch_size):
-    """
-    Reconstruct a full image from its patches (patches are torch.Tensors).
-
-    Args:
-        patches (list of torch.Tensor): List of image patches.
-        image_size (tuple): The size of the full image (height, width).
-        patch_size (tuple): The size of each patch (height, width).
-
-    Returns:
-        torch.Tensor: The reconstructed image.
-    """
-    #logging.info(f"Patches for image: {len(patches)} patches")
-    #for i, patch in enumerate(patches[:5]):  # Inspectez les premiers patches
-    #    logging.info(f"Patch {i}: unique values = {patch.unique()}")
-
-    width, height = image_size
-    patch_height, patch_width = patch_size
-
-    # Calculate the number of patches in both dimensions (height and width)
-    num_patches_x, num_patches_y = find_num_patches(width, height, patch_height, patch_width)
-    #logging.info(f"Number of patches (x, y): ({num_patches_x}, {num_patches_y})")
-
-    # Create an empty tensor to hold the reconstructed image
-    #logging.info(f"Creating reconstructed image of size: {height}x{width}, dtype: {patches[0].dtype}")
-    reconstructed_image = torch.zeros((height, width), dtype=patches[0].dtype)
-
-    patch_index = 0
-    for x in range(num_patches_x):
-        for y in range(num_patches_y):
-            # Get the current patch from the list
-            patch = patches[patch_index]
-
-            x_start, y_start, x_end, y_end, patch_x_start, patch_y_start = find_start_end_coordinate(
-                x, y, width, height, patch_width, patch_height)
-
-            # Place the patch in the appropriate location
-            reconstructed_image[x_start:x_end, y_start:y_end] = patch[patch_x_start:, patch_y_start:]
-
-            # Optional: Debug the unique values in the placed region
-            #logging.debug(f"Patch {patch_index} placed, unique values in region: {reconstructed_image[x_start:x_end, y_start:y_end].unique()}")
-
-            # Move to the next patch
-            patch_index += 1
-
-    # Log unique values in the final reconstructed image
-    logging.info(f"Reconstructed image completed, unique values: {reconstructed_image.unique()}")
-
-    #plt.imshow(reconstructed_image.cpu().numpy(), cmap="gray")
-    #plt.title("Reconstructed Image")
-    #plt.savefig("reconstructed_image.png")
-
-    return reconstructed_image
-
-
-def find_num_patches(width, height, patch_height, patch_width):
-    """
-    Find the numbers of patches on a image
-
-    Args :
-        width, height: size of the image
-        patch_width, patch_height: size of the patch
-    return :
-        num_patches_x, num_patches_y: number of patches on the image
-    """
-    num_patches_x = height // patch_height
-    num_patches_y = width // patch_width
-    if height % patch_height != 0:
-        num_patches_x += 1
-    if width % patch_width != 0:
-        num_patches_y += 1
-    return num_patches_x,num_patches_y
-
-
-def find_start_end_coordinate(x, y, width, height, patch_width, patch_height):
-    """
-    Find the position coordinates
-
-    Args :
-        x, y: patch position on the image
-        width, height: size of the image
-        patch_width, patch_height: size of the patch
-    return :
-        x_start, y_start: start coordinate of the patch added on the image
-        x_end, y_end: end coordinate of the patch added on the image
-        patch_x_start, patch_y_start: start coordinate on the patch
-    """
-    x_start = x * patch_height
-    y_start = y * patch_width
-
-    x_end = min((x + 1) * patch_height, height)
-    y_end = min((y + 1) * patch_width, width)
-
-    patch_x_start = ((x + 1)*patch_height) - x_end
-    patch_y_start = ((y + 1)*patch_width ) - y_end
-    
-    return x_start, y_start, x_end, y_end, patch_x_start, patch_y_start
-
-
-def generate_submission_file(predictions, file_name = "submission.csv"):
+def generate_submission_file(predictions : List[torch.Tensor], ordered_files : List[torch.Tensor], file_name = "submission.csv"):
     """
     Generate the CSV file for kaggle submission
-
     Args :
         predictions (array of torch.Tensor): table of predicted value, one per image
+        ordered_files (array of string): table of the name of the files
         file_name (string): name of the submission file
     """
-    ordered_files = [
-    'rg20090121_mask.png.ppm',  # Correspond à indice 0
-    'rg20090520_mask.png.ppm'   # Correspond à indice 1
-    ]
+    assert len(ordered_files) == len(predictions), "The list of file name must be the same size as the list of prediction"
 
-    with open("submission.csv", "w") as f:
+    with open(file_name, "w") as f:
         f.write("Id,Target\n")
 
         # Let us generate the predictions file for 2 images
@@ -126,10 +20,103 @@ def generate_submission_file(predictions, file_name = "submission.csv"):
             
             # Iteratate over the rows of the prediction
             for idx_row, row in enumerate(predictions[mask_id]):
-                row_str = encoder.array_to_string(row.numpy())
+                row = row.cpu().numpy().astype(int)
+                row_str = array_to_string(row)
                 f.write(f"{mask_file_name}_{idx_row},\"{row_str}\"\n")
-            
-            #logging.info(f"Prediction {mask_id}: {predictions[mask_id].unique()}")
 
-   
+def binary_list_to_string(binary_list, num_bits=6, offset=48):
+    """
+    Convert a list of binary digits (0s and 1s) into a string, where every 6 bits represent a character.
+    Args:
+        binary_list: List of integers (0 or 1) representing binary digits.
+        num_bits: Number of bits to use for encoding.
+        offset: Offset to add to the integer representation of the binary list.
+    Returns:
+        String representation of the binary input.
+    """
+    # Ensure the binary list length is a multiple of num_bits
+    if len(binary_list) % num_bits != 0:
+        raise ValueError(f"The binary list length must be a multiple of {num_bits}.")
 
+    # Split the list into chunks of num_bits
+    chars = []
+    for i in range(0, len(binary_list), num_bits):
+        byte = binary_list[i : i + num_bits]
+        # Convert the byte (list of num_bits bits) to an integer
+        byte_as_int = offset + int("".join(map(str, byte)), 2)
+        # Convert the integer to a character and append to the result list
+        chars.append(chr(byte_as_int))
+
+    return "".join(chars)
+
+
+def array_to_string(arr: np.array, num_bits=6, offset=48):
+    """
+    Transform array of 0 and 1 to a ASCII string
+    Args:
+        arr: a nd array of 0's and 1's
+        num_bits: number of bits to use for encoding
+        offset: offset to add to the integer representation of the binary list
+    Returns:
+        String representation of the binary input.
+    """
+    raveled = list(arr.ravel())
+    # Pad the raveled sequence by 0's to have a size multiple of num_bits
+    raveled.extend([0] * ((num_bits - (len(raveled) % num_bits))))
+    result = binary_list_to_string(raveled, num_bits, offset)
+    return result
+
+
+def generate_sample_files(img_height, img_width):
+    """
+    Generate sample image convert into csv file
+    Args:
+        img_height: image height
+        img_width: image width
+    Returns:
+        None
+    """
+    with open("submission.csv", "w") as f:
+        f.write("Id,Target\n")
+
+        # Let us generate the predictions file for 2 images
+        for mask_id in range(2):
+            # For this example, we generate a random prediction
+            prediction = np.random.randint(0, 2, (img_height, img_width))
+
+            # Iteratate over the rows of the prediction
+            for idx_row, row in enumerate(prediction):
+                mystr = array_to_string(row)
+                f.write(f"{mask_id}_{idx_row},\"{mystr}\"\n")
+
+
+def generate_sample_files_unbalanced(img_height, img_width, proportion_zeros=0.9844, proportion_ones=0.0156):
+    """
+    Generate a sample image and convert it into a CSV file with specific proportions of 0s and 1s.
+    Args:
+        img_height: image height
+        img_width: image width
+        proportion_zeros: proportion of 0s in the mask
+        proportion_ones: proportion of 1s in the mask
+    Returns:
+        None
+    """
+    with open("submission.csv", "w") as f:
+        f.write("Id,Target\n")
+
+        # Let us generate the predictions file for 2 images
+        for mask_id in range(2):
+            # Generate a random prediction with specified proportions
+            total_pixels = img_height * img_width
+            num_ones = int(total_pixels * proportion_ones)
+            num_zeros = total_pixels - num_ones
+
+            # Create an array with the desired proportions
+            flat_mask = np.array([1] * num_ones + [0] * num_zeros)
+            np.random.shuffle(flat_mask)  # Shuffle to randomize the arrangement
+            prediction = flat_mask.reshape((img_height, img_width))
+
+            # Iterate over the rows of the prediction
+            for idx_row, row in enumerate(prediction):
+                mystr = array_to_string(row)
+                f.write(f"{mask_id}_{idx_row},\"{mystr}\"\n")
