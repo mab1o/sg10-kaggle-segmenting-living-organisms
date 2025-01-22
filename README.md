@@ -26,10 +26,12 @@ python -m pip install .
 Then you can run a training, by editing the yaml file, then 
 
 ```
-python -m torchtmpl.main config.yml train
+python -m torchtmpl.main config.yaml train
 ```
 
-And for testing (**not yet implemented**)
+And for testing and creating the submission.csv
+python -m torchtmpl.main config.yaml test
+
 
 ```
 python main.py path/to/your/run test
@@ -98,9 +100,9 @@ Write a full basic pipeline with all the boiler plate code before going in depth
 - [x] **DATA** : write a PlanktonDataset as pytorch Dataset
 - [ ] **MODEL** : implement a basic baseline model,
 - [ ] **METRICS** : implement the basic metrics of interest, in particulier F1 score
-- [ ] **SUBMISSION** : Write the test function to generate the submission file
+- [X] **SUBMISSION** : Write the test function to generate the submission file
 - [ ] **LOG** : Consider logging your experiments to online dashboards (e.g. wandb)
-- [ ] **DCE** : Run your first experiments with basic models, basic pipelines, small set of training data, and make your first submissions
+- [X] **DCE** : Run your first experiments with basic models, basic pipelines, small set of training data, and make your first submissions
 
 Then you have your MVP (Minimal Viable Product), you can iterate on extensions.
 

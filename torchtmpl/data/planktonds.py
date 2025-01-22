@@ -9,6 +9,9 @@ from torch.utils.data import Dataset
 # Local imports
 from . import patch
 from . import submission
+import matplotlib.pyplot as plt
+
+
 
 class PlanktonDataset(Dataset):
     def __init__(self, image_mask_dir, patch_size, mode = "train"):
@@ -148,20 +151,13 @@ class PlanktonDataset(Dataset):
         return image_row, image_column
 
 
-    def insert(self, mask_patch, idx = None):
-        """
-        Insert a mask patch to the Dataset
-
-        Args:
-            mask_patch (torch.Tensor): patch of a mask
-            idx (int): index of where the patches is added
-        """
+    def insert(self, mask_patch, idx=None):
         assert self.mode == 'test', "Dataset must be a test dataset to insert a patch"
-
-        if idx == None :
+        if idx is None:
             self.mask_files.append(mask_patch)
-        else :
-            assert 0 <= idx < len(self), "Index out of range: {idx}"
+        else:
+            if idx >= len(self.mask_files):
+                self.mask_files.extend([None] * (idx - len(self.mask_files) + 1))
             self.mask_files[idx] = mask_patch
 
 
@@ -222,24 +218,48 @@ class PlanktonDataset(Dataset):
         patch.show_plankton_image(img, mask, image_name)
     
 
-    def to_submission(self,  file_name = "submission.csv") :
-        """
-        Rebuild mask and write it in a CSV file
 
-        Args :
-            data (PlanktonDataset): Dataset of the images
-            patches (list of torch.Tensor): mask patches to be rebuild  
-            file_name(string): file name at "submission.csv" per default
-        """
-        assert self.mode == 'test', "to_submission must be use for test dataset"
+
+
+    def show_predicted_mask(self, idx=0 , image_name = "predicted_mask.png"):
+        assert idx < self.get_num_image(), f"Index out of range: {idx}"
+        predict_mask = self.reconstruct_mask(idx)
+
+
+        plt.imshow(predict_mask, cmap="gray")
+        plt.title("Predict Mask")
+        plt.axis("off")
+
+        plt.tight_layout()
+        plt.savefig(image_name, bbox_inches="tight", dpi=300)
+        plt.close()
+
+
+
+    def to_submission(self, file_name="submission.csv"):
+        assert self.mode == 'test', "to_submission must be used for test dataset"
         assert file_name.endswith('.csv'), "File name must end with .csv"
-        
-        predictions = [
-            self.reconstruct_mask(image_id) for image_id in range(len(self.image_files))
-        ]
+
+        predictions = []
+        for image_id in range(len(self.image_files)):
+            print(f"Reconstructing mask for image {image_id}")
+            try:
+                mask = self.reconstruct_mask(image_id)
+                print(f"Mask shape for image {image_id}: {mask.shape}")
+                predictions.append(mask)
+            except Exception as e:
+                print(f"Error reconstructing mask for image {image_id}: {e}")
+                raise e
+
+        # Vérification finale des prédictions
+        for i, prediction in enumerate(predictions):
+            unique, counts = torch.unique(mask, return_counts=True)
+            print(f"Image - Distribution des pixels : {dict(zip(unique.tolist(), counts.tolist()))}")
+            print(f"Prediction {i}: {prediction.shape}, dtype={prediction.dtype}")
+
+        # Appeler generate_submission_file une seule fois pour toutes les images
         submission.generate_submission_file(predictions, file_name)
-
-
+            
     def reconstruct_mask(self, image_id):
         """
         Rebuild mask and write it in a CSV file
@@ -251,20 +271,25 @@ class PlanktonDataset(Dataset):
             torch.Tensor of complete mask
         """
         # Find start and end
-        start_patche_id, end_patche_id= 0, 0       
-        for id in range (image_id + 1):
+        start_patche_id, end_patche_id = 0, 0
+        for id in range(image_id + 1):
             start_patche_id = end_patche_id
-            end_patche_id  += self.image_patches[id][0]*self.image_patches[id][1]
-        
-        # Reconstruct mask
-        image_size = self.images_size[image_id]
+            end_patche_id += self.image_patches[id][0] * self.image_patches[id][1]
 
+        #print(f"Image {image_id}: start={start_patche_id}, end={end_patche_id}, total patches={len(self.mask_files)}")
+
+        # Récupération des patches
         if self.mode == 'test':
             patches = self.mask_files[start_patche_id:end_patche_id]
         else:
-            patches = [self[idx_mask][1] for idx_mask in range(start_patche_id,end_patche_id)]
-        
-        return submission.image_reconstruction(patches, image_size, self.patch_size)
+            patches = [self[idx_mask][1] for idx_mask in range(start_patche_id, end_patche_id)]
+
+        print(f"Patches retrieved for image {image_id}: {len(patches)} patches")
+        if not patches:
+            raise ValueError(f"No patches found for image {image_id}")
+
+        # Reconstruction de l'image
+        return submission.image_reconstruction(patches, self.images_size[image_id], self.patch_size)
 
 
     def get_num_image(self):

@@ -3,7 +3,8 @@ import torch
 
 # Local imports
 from . import encoder
-
+import logging
+import matplotlib.pyplot as plt
 
 def image_reconstruction(patches, image_size, patch_size):
     """
@@ -17,14 +18,20 @@ def image_reconstruction(patches, image_size, patch_size):
     Returns:
         torch.Tensor: The reconstructed image.
     """
-    width, height  = image_size
+    #logging.info(f"Patches for image: {len(patches)} patches")
+    #for i, patch in enumerate(patches[:5]):  # Inspectez les premiers patches
+    #    logging.info(f"Patch {i}: unique values = {patch.unique()}")
+
+    width, height = image_size
     patch_height, patch_width = patch_size
 
     # Calculate the number of patches in both dimensions (height and width)
     num_patches_x, num_patches_y = find_num_patches(width, height, patch_height, patch_width)
+    #logging.info(f"Number of patches (x, y): ({num_patches_x}, {num_patches_y})")
 
     # Create an empty tensor to hold the reconstructed image
-    reconstructed_image = torch.zeros((height,width), dtype=patches[0].dtype)
+    #logging.info(f"Creating reconstructed image of size: {height}x{width}, dtype: {patches[0].dtype}")
+    reconstructed_image = torch.zeros((height, width), dtype=patches[0].dtype)
 
     patch_index = 0
     for x in range(num_patches_x):
@@ -33,13 +40,23 @@ def image_reconstruction(patches, image_size, patch_size):
             patch = patches[patch_index]
 
             x_start, y_start, x_end, y_end, patch_x_start, patch_y_start = find_start_end_coordinate(
-                                    x, y, width, height, patch_width,patch_height)
+                x, y, width, height, patch_width, patch_height)
 
             # Place the patch in the appropriate location
-            reconstructed_image[x_start:x_end,y_start:y_end] = patch[patch_x_start:,patch_y_start:]
+            reconstructed_image[x_start:x_end, y_start:y_end] = patch[patch_x_start:, patch_y_start:]
+
+            # Optional: Debug the unique values in the placed region
+            #logging.debug(f"Patch {patch_index} placed, unique values in region: {reconstructed_image[x_start:x_end, y_start:y_end].unique()}")
 
             # Move to the next patch
             patch_index += 1
+
+    # Log unique values in the final reconstructed image
+    logging.info(f"Reconstructed image completed, unique values: {reconstructed_image.unique()}")
+
+    #plt.imshow(reconstructed_image.cpu().numpy(), cmap="gray")
+    #plt.title("Reconstructed Image")
+    #plt.savefig("reconstructed_image.png")
 
     return reconstructed_image
 
@@ -96,14 +113,23 @@ def generate_submission_file(predictions, file_name = "submission.csv"):
         predictions (array of torch.Tensor): table of predicted value, one per image
         file_name (string): name of the submission file
     """
-    with open(file_name, "w") as f:
+    ordered_files = [
+    'rg20090121_mask.png.ppm',  # Correspond à indice 0
+    'rg20090520_mask.png.ppm'   # Correspond à indice 1
+    ]
+
+    with open("submission.csv", "w") as f:
         f.write("Id,Target\n")
 
         # Let us generate the predictions file for 2 images
-        for mask_id in range(len(predictions)):
-
+        for mask_id, mask_file_name in enumerate(ordered_files):
+            
             # Iteratate over the rows of the prediction
             for idx_row, row in enumerate(predictions[mask_id]):
                 row_str = encoder.array_to_string(row.numpy())
-                f.write(f"{mask_id}_{idx_row},\"{row_str}\"\n")
+                f.write(f"{mask_file_name}_{idx_row},\"{row_str}\"\n")
+            
+            #logging.info(f"Prediction {mask_id}: {predictions[mask_id].unique()}")
+
    
+

@@ -4,13 +4,14 @@ version = "0.0.1"
 
 dependencies = [
     "PyYAML>=6.0",
-    "torch>=1.13.1",
-    "torchvision>=0.14.1",
-    "torchinfo>=1.7.2",
-    "wandb>=0.13.11",
-    "scipy>=1.10.1",
-    "tqdm>=4.65.0",
-    "matplotlib>=3.7.1"
+    "torch>=2.0.0",
+    "torchvision>=0.15.0",
+    "torchinfo>=1.8.0",
+    "wandb>=0.15.0",
+    "scipy>=1.11.0",
+    "tqdm>=4.67.1",
+    "matplotlib>=3.8.0",
+    "timm>=0.9.2"
 ]
 
 [options]
