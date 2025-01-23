@@ -4,6 +4,9 @@
 import logging
 import sys
 import os
+os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "expandable_segments:True,max_split_size_mb:128"
+
+
 import pathlib
 
 # External imports
@@ -11,7 +14,6 @@ import yaml
 import wandb
 import torch
 import torchinfo.torchinfo as torchinfo
-import numpy as np
 
 # Local imports
 from . import data
@@ -58,7 +60,7 @@ def train(config):
 
     # Build the callbacks
     logging_config = config["logging"]
-    # Let us use as base logname the class name of the modek
+    # Let us use as base logname the class name of the model
     logname = model_config["class"]
     logdir = utils.generate_unique_logpath(logging_config["logdir"], logname)
     if not os.path.isdir(logdir):
@@ -71,7 +73,8 @@ def train(config):
         yaml.dump(config, file)
 
     # Make a summary script of the experiment
-    input_size = next(iter(train_loader))[0].shape
+    logging.info("= Summary")
+    input_size = next(iter(train_loader))[0].shape # take too mush time
     summary_text = (
         f"Logdir : {logdir}\n"
         + "## Command \n"
@@ -97,7 +100,9 @@ def train(config):
     model_checkpoint = utils.ModelCheckpoint(
         model, str(logdir / "best_model.pt"), min_is_best=True
     )
+    
 
+    logging.info(f"= Start training")
     for e in range(config["nepochs"]):
         # Train 1 epoch
         train_loss = utils.train(model, train_loader, loss, optimizer, device)
@@ -124,7 +129,58 @@ def train(config):
 
 
 def test(config):
-    pass
+    use_cuda = torch.cuda.is_available()
+    device = torch.device("cuda") if use_cuda else torch.device("cpu")
+    model_name = config['test']['model_path'] + config['test']['model_name']
+    config = yaml.safe_load(open(config['test']['model_path']+ config['test']['model_config'], "r"))
+
+    logging.info("= Dataset")
+    dataset_test = data.PlanktonDataset(
+        config['data']['testpath'],config['data']['patch_size'],mode='test')
+    dataset_train = data.PlanktonDataset(
+        config['data']['trainpath'],config['data']['patch_size'])
+    input_size = tuple(dataset_train[0][0].shape)
+    num_classes = input_size[0]
+
+    logging.info(f"Train path: {config['data']['trainpath']}")
+    logging.info(f"Files in testpath: {os.listdir(config['data']['testpath'])}")
+
+    logging.info(f"Test path: {config['data']['testpath']}")
+    logging.info(f"Number of train images: {len(dataset_train.image_files)}")
+    logging.info(f"Number of test images: {len(dataset_test.image_files)}")
+
+    print(len(dataset_train))
+    print(len(dataset_test))
+
+    logging.info("= Model")
+    model_config = config["model"]
+    model = models.build_model(model_config, input_size, num_classes)
+    model.to(device)
+    model.load_state_dict(torch.load(model_name))
+    model.eval()
+
+
+    logging.info("= Predict masks for all test images")
+    for image_idx, (num_patches_x, num_patches_y) in enumerate(dataset_test.image_patches):
+        logging.info(f"Predicting patches for image {image_idx}")
+        for idx_patch in range(num_patches_x * num_patches_y):
+            global_idx = idx_patch + sum(
+                x * y for x, y in dataset_test.image_patches[:image_idx]
+            )  # Calcul de l'index global
+            #logging.info(f"  - predict mask {global_idx} (patch {idx_patch} in image {image_idx})")
+            image = dataset_test[global_idx].unsqueeze(0).to(device)
+            dataset_test.insert(model.predict(image))
+
+    logging.info(f"Total test images: {len(dataset_test.image_files)}")
+    logging.info(f"Total patches predicted: {len(dataset_test.mask_files)}")
+
+    logging.info("= Reconstruct image")
+    #dataset_test.show_plankton_complete_image(0,"image_reconstruct_1.png")
+
+    logging.info("= Compare masks")
+    #dataset_test.show_compare_mask(0,dataset_train,"compare_mask_1.png")
+    #dataset_test.show_predicted_mask()
+    dataset_test.to_submission()
 
 
 if __name__ == "__main__":

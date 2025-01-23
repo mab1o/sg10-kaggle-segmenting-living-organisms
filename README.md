@@ -26,10 +26,12 @@ python -m pip install .
 Then you can run a training, by editing the yaml file, then 
 
 ```
-python -m torchtmpl.main config.yml train
+python -m torchtmpl.main config.yaml train
 ```
 
-And for testing (**not yet implemented**)
+And for testing and creating the submission.csv
+python -m torchtmpl.main config.yaml test
+
 
 ```
 python main.py path/to/your/run test
@@ -54,8 +56,8 @@ Every module/script is equiped with some test functions. Although these are not 
 For example, you can call :
 
 ```
-python3 -m virtualenv venv
-source venv/bin/activate
+python3 -m venv $TMPDIR/venv
+source $TMPDIR/venv/bin/activate
 python -m pip install .
 python -m torchtmpl.models
 ```
@@ -73,20 +75,20 @@ and this will call the test functions in the `torchtmpl/models/__main__.py` scri
 ├── submit-slurm.py
 └── torchtmpl
     ├── data
-    │   ├── data.py            # data management
-    │   ├── encoder.py         # utils for binary to string
-    │   ├── __init__.py        # functions exportable
-    │   ├── __main__.py        # test file
-    │   ├── patch.py           # utils to extract patch from a image
-    │   ├── PlanktonDataset.py # dataset inherited from torch.Dataset
-    │   └── submission.py      # utils for submission
+    │   ├── dataloader.py     # data management
+    │   ├── encoder.py        # utils for binary to string
+    │   ├── __init__.py       # functions exportable
+    │   ├── __main__.py       # test file
+    │   ├── patch.py          # utils to extract patch from a image
+    │   ├── planktonds.py     # dataset inherited from torch.Dataset
+    │   └── submission.py     # utils for submission
     ├── __init__.py
     ├── main.py
     ├── models
     │   ├── base_models.py
     │   ├── cnn_models.py
-    │   ├── __init__.py        # functions exportable
-    │   └── __main__.py        # test file
+    │   ├── __init__.py       # functions exportable
+    │   └── __main__.py       # test file
     ├── optim.py
     └── utils.py
 ```
@@ -98,9 +100,9 @@ Write a full basic pipeline with all the boiler plate code before going in depth
 - [x] **DATA** : write a PlanktonDataset as pytorch Dataset
 - [ ] **MODEL** : implement a basic baseline model,
 - [ ] **METRICS** : implement the basic metrics of interest, in particulier F1 score
-- [ ] **SUBMISSION** : Write the test function to generate the submission file
+- [X] **SUBMISSION** : Write the test function to generate the submission file
 - [ ] **LOG** : Consider logging your experiments to online dashboards (e.g. wandb)
-- [ ] **DCE** : Run your first experiments with basic models, basic pipelines, small set of training data, and make your first submissions
+- [X] **DCE** : Run your first experiments with basic models, basic pipelines, small set of training data, and make your first submissions
 
 Then you have your MVP (Minimal Viable Product), you can iterate on extensions.
 
@@ -109,3 +111,13 @@ Then you have your MVP (Minimal Viable Product), you can iterate on extensions.
 
 - https://frezza.pages.centralesupelec.fr/teachml2/Supports/NeuralNetworks/02-ffn.html#/example-on-a-regression-problem-1
 - https://frezza.pages.centralesupelec.fr/teachml2/Supports/NeuralNetworks/00-intro.html#/evaluation-33/0
+
+## Projet Choices
+
+- square patch: why?
+- size of the batch: why?
+- patch of the image no overlapping: why?
+- incomplete last batch: why?
+- number of epoch : why ?
+- init of the neurones: why ?
+- model shape: why? + schema

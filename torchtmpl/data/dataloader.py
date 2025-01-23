@@ -6,12 +6,11 @@ import random
 
 # External imports
 import torch
-import torch.nn as nn
 import torch.utils.data
-import torchvision
-from torchvision import transforms
-
 import matplotlib.pyplot as plt
+
+# Local imports
+from . import planktonds
 
 
 def show_image(X):
@@ -22,20 +21,32 @@ def show_image(X):
 
 
 def get_dataloaders(data_config, use_cuda):
+    """
+    Prépare les DataLoaders pour entraîner et valider un modèle avec un dataset PlanktonDataset.
+
+    Args:
+        data_config (dict): Configuration du dataset contenant :
+            - "valid_ratio" (float): Proportion des données pour validation.
+            - "batch_size" (int): Taille du batch.
+            - "num_workers" (int): Nombre de workers pour DataLoader.
+            - "trainpath" (str): Chemin vers le répertoire contenant les images et masques.
+            - "patch_size" ([int, int]): Taille des patchs à extraire.
+        use_cuda (bool): Indique si CUDA est utilisé.
+        plankton_dataset_cls (type): Classe du dataset (ex : PlanktonDataset).
+
+    Returns:
+        tuple: Contient les DataLoaders pour train et validation, la taille d'entrée et le nombre de classes (C, H, W).
+    """
     valid_ratio = data_config["valid_ratio"]
     batch_size = data_config["batch_size"]
     num_workers = data_config["num_workers"]
 
-    logging.info("  - Dataset creation")
+    logging.info("  - Dataset creation (PlanktonDataset)")
 
-    input_transform = transforms.Compose(
-        [transforms.Grayscale(), transforms.Resize((128, 128)), transforms.ToTensor()]
-    )
-
-    base_dataset = torchvision.datasets.Caltech101(
-        root=data_config["trainpath"],
-        download=True,
-        transform=input_transform,
+    base_dataset = planktonds.PlanktonDataset(
+        image_mask_dir=data_config['trainpath'],
+        patch_size=data_config["patch_size"],
+        mode="train"
     )
 
     logging.info(f"  - I loaded {len(base_dataset)} samples")
@@ -66,7 +77,8 @@ def get_dataloaders(data_config, use_cuda):
         pin_memory=use_cuda,
     )
 
-    num_classes = len(base_dataset.categories)
+    num_classes = 1
     input_size = tuple(base_dataset[0][0].shape)
-
+        
+    logging.info(f"  - Input size is {input_size} and the number of classe is {num_classes}.")
     return train_loader, valid_loader, input_size, num_classes

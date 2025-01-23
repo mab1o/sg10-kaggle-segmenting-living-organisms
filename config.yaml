@@ -1,18 +1,28 @@
 data:
   root_dir:  '/mounts/Datasets3/2024-2025-ChallengePlankton/'
   trainpath: '/mounts/Datasets3/2024-2025-ChallengePlankton/train/'
-  testpath:  '/mounts/Datasets3/2024-2025-ChallengePlankton/test/'
-  batch_size: 256
-  num_workers: 4
+  testpath: '/mounts/Datasets3/2024-2025-ChallengePlankton/test/'
+  batch_size: 16
+  num_workers: 6
   valid_ratio: 0.2
+  patch_size: [256,256]
 
 optim:
-  algo: SGD
+  algo: Adam
   params:
-    lr: 0.01
+    lr: 0.001
+    weight_decay: 0.0001
+scheduler:
+  class: ReduceLROnPlateau
+  params:
+    mode: 'min'
+    factor: 0.5
+    patience: 3
 
-nepochs: 20
-loss: "CrossEntropyLoss"
+
+nepochs: 4
+# loss: "CrossEntropyLoss"
+loss : "BCEWithLogitsLoss"
 
 logging:
   # wandb: 
@@ -22,5 +32,13 @@ logging:
 # model:
 #   class: Linear
 model:
-  class: VanillaCNN
-  num_layers : 4
+  # class: VanillaCNN
+  # num_layers : 4
+  class: UNet
+  encoder:
+    model_name: resnet34
+
+test:
+  model_path: 'logs/UNet_13/'
+  model_name: 'best_model.pt'
+  model_config: 'config.yaml'

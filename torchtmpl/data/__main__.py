@@ -8,9 +8,10 @@ import numpy as np
 
 # Local imports
 from . import patch
-from . import PlanktonDataset
+from . import planktonds
 from . import encoder
 from . import submission
+from . import dataloader
 
 def test_patch(config) :
     # Test patch
@@ -32,7 +33,7 @@ def test_patch(config) :
 def test_PlanktonDataset_train(config):
     logging.info("\n=Test Plankton Dataset")
     dir_path = config['data']['trainpath'] 
-    data = PlanktonDataset(dir_path,(10000,10000))
+    data = planktonds.PlanktonDataset(dir_path,(10000,10000))
 
     logging.info(f"\nDataset size: {len(data)}")
     logging.info(f"\nOrigin Path: {data.image_mask_dir}")
@@ -90,7 +91,7 @@ def test_reconstruction_image(config):
     logging.info("\nCharge Data")
     dir_path = config['data']['trainpath']
     patch_size = (10000,10000)
-    ds = PlanktonDataset(dir_path,patch_size)
+    ds = planktonds.PlanktonDataset(dir_path,patch_size)
     
     logging.info(f"\nImpression de l'image original")
     dir_path = config['data']['trainpath']
@@ -110,7 +111,7 @@ def test_generate_csv_file(config):
     logging.info("\nCharge Data")
     dir_path = config['data']['trainpath']
     patch_size = (20000,2)
-    ds = PlanktonDataset(dir_path,patch_size)
+    ds = planktonds.PlanktonDataset(dir_path,patch_size)
 
     logging.info("\nMake csv file")
     _, mask = ds[10000]
@@ -126,10 +127,10 @@ def test_reconstruction_image_test(config):
     logging.info("\nCharge Data train")
     dir_path = config['data']['trainpath']
     patch_size = (10000,10000)
-    ds_train = PlanktonDataset(dir_path,patch_size)
+    ds_train = planktonds.PlanktonDataset(dir_path,patch_size)
 
     logging.info("\nCharge Data test")
-    ds_test = PlanktonDataset(dir_path,patch_size, mode='test')
+    ds_test = planktonds.PlanktonDataset(dir_path,patch_size, mode='test')
 
     num_patches_first_image = ds_train.image_patches[0][0] * ds_train.image_patches[0][1]
     for i in range(num_patches_first_image):
@@ -157,10 +158,10 @@ def test_compare_image_test(config):
     logging.info("\nCharge Data train")
     dir_path = config['data']['trainpath']
     patch_size = (10000,10000)
-    ds_train = PlanktonDataset(dir_path,patch_size)
+    ds_train = planktonds.PlanktonDataset(dir_path,patch_size)
 
     logging.info("\nCharge Data test")
-    ds_test = PlanktonDataset(dir_path,patch_size, mode='test')
+    ds_test = planktonds.PlanktonDataset(dir_path,patch_size, mode='test')
 
     num_patches_first_image = ds_train.image_patches[0][0] * ds_train.image_patches[0][1]
     for i in range(num_patches_first_image):
@@ -174,6 +175,34 @@ def test_compare_image_test(config):
     ds_test.show_compare_mask(0, ds_train)
 
     logging.info("\n=FIN Test compare reconstruct test")
+
+
+def test_dataloader(config):
+    logging.info("\n=Test DataLoader")
+    
+    train_loader, valid_loader, input_size, num_classes = dataloader.get_dataloaders(config['data'], False)
+    logging.info("Size of train loader: %d", len(train_loader))
+    logging.info("Size of valid loader: %d", len(valid_loader))
+    logging.info(f"Input size : {input_size}")
+    logging.info(f"Number of classes: {num_classes}")
+
+    logging.info("= FIN Test on Dataloader")
+
+# TODO : mettre un test pour verifier taille de img et mask
+# TODO : if img pas (1,H,W) resoudre le pb
+
+def test_size_plankton(config):
+    logging.info("\n=Test Size test")
+
+    logging.info("\nCharge Data train")
+    dir_path = config['data']['trainpath']
+    patch_size = (10000,10000)
+    ds_train = planktonds.PlanktonDataset(dir_path,patch_size)
+
+    img,mask = ds_train[0]
+    logging.info(img.shape)
+    logging.info(mask.shape)
+    logging.info("= FIN Test size")
 
 
 if __name__ == "__main__":
@@ -193,4 +222,6 @@ if __name__ == "__main__":
     #test_PlanktonDataset_train(config)
     #test_reconstruction_image(config)
     # test_reconstruction_image_test(config)
-    test_compare_image_test(config)
+    # test_compare_image_test(config)
+    # test_dataloader(config)
+    test_size_plankton(config)

@@ -7,6 +7,7 @@ import os
 import torch
 import torch.nn
 import tqdm
+from torch.amp import GradScaler, autocast
 
 
 def generate_unique_logpath(logdir, raw_run_name):
@@ -82,26 +83,38 @@ def train(model, loader, f_loss, optimizer, device, dynamic_display=True):
 
     total_loss = 0
     num_samples = 0
+    scaler = GradScaler("cuda")  # Initialiser le scaler pour la précision mixte
+
     for i, (inputs, targets) in (pbar := tqdm.tqdm(enumerate(loader))):
 
         inputs, targets = inputs.to(device), targets.to(device)
 
-        # Compute the forward propagation
-        outputs = model(inputs)
+        optimizer.zero_grad()  # Toujours remettre les gradients à zéro avant le passage avant
 
-        loss = f_loss(outputs, targets)
+        # Forward pass avec précision mixte
+        with autocast("cuda"):
+            outputs = model(inputs).squeeze(1)
+            loss = f_loss(outputs, targets)
 
-        # Backward and optimize
-        optimizer.zero_grad()
-        loss.backward()
-        optimizer.step()
+        # Backward pass et optimisation
+        scaler.scale(loss).backward()
+        scaler.step(optimizer)
+        scaler.update()
+
+        # Vidage de mémoire et diagnostic (à espacer pour éviter des ralentissements)
+        if i % 300 == 0:  # Toutes les 500 itérations
+            print("Avant vidage du cache:")
+            print(torch.cuda.memory_summary())
+            torch.cuda.empty_cache()
+            print("Après vidage du cache:")
+            print(torch.cuda.memory_summary())
+
 
         # Update the metrics
         # We here consider the loss is batch normalized
         total_loss += inputs.shape[0] * loss.item()
         num_samples += inputs.shape[0]
         pbar.set_description(f"Train loss : {total_loss/num_samples:.2f}")
-
     return total_loss / num_samples
 
 
@@ -128,7 +141,7 @@ def test(model, loader, f_loss, device):
         inputs, targets = inputs.to(device), targets.to(device)
 
         # Compute the forward propagation
-        outputs = model(inputs)
+        outputs = model(inputs).squeeze(1)
 
         loss = f_loss(outputs, targets)
 
