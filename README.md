@@ -98,11 +98,11 @@ and this will call the test functions in the `torchtmpl/models/__main__.py` scri
 Write a full basic pipeline with all the boiler plate code before going in depth.
 
 - [x] **DATA** : write a PlanktonDataset as pytorch Dataset
-- [ ] **MODEL** : implement a basic baseline model,
+- [x] **MODEL** : implement a basic baseline model,
 - [ ] **METRICS** : implement the basic metrics of interest, in particulier F1 score
-- [X] **SUBMISSION** : Write the test function to generate the submission file
+- [x] **SUBMISSION** : Write the test function to generate the submission file
 - [ ] **LOG** : Consider logging your experiments to online dashboards (e.g. wandb)
-- [X] **DCE** : Run your first experiments with basic models, basic pipelines, small set of training data, and make your first submissions
+- [x] **DCE** : Run your first experiments with basic models, basic pipelines, small set of training data, and make your first submissions
 
 Then you have your MVP (Minimal Viable Product), you can iterate on extensions.
 

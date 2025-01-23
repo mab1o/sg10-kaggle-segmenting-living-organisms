@@ -1,5 +1,3 @@
-# coding: utf-8
-
 # Standard imports
 import logging
 import random
@@ -7,18 +5,9 @@ import random
 # External imports
 import torch
 import torch.utils.data
-import matplotlib.pyplot as plt
 
 # Local imports
 from . import planktonds
-
-
-def show_image(X):
-    num_c = X.shape[0]
-    plt.figure()
-    plt.imshow(X[0] if num_c == 1 else X.permute(1, 2, 0))
-    plt.show()
-
 
 def get_dataloaders(data_config, use_cuda):
     """

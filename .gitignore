@@ -3,10 +3,8 @@ __pycache__/
 *.py[cod]
 
 # generated images
-image*.png
-plankton_sample.png
-submission.csv
-compare_mask.png
+*.csv
+*.png
 
 # Distribution / packaging
 .Python

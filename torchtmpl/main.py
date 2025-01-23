@@ -4,9 +4,6 @@
 import logging
 import sys
 import os
-os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "expandable_segments:True,max_split_size_mb:128"
-
-
 import pathlib
 
 # External imports
@@ -21,6 +18,7 @@ from . import models
 from . import optim
 from . import utils
 
+#os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "expandable_segments:True,max_split_size_mb:128"
 
 def train(config):
     use_cuda = torch.cuda.is_available()
@@ -101,7 +99,6 @@ def train(config):
         model, str(logdir / "best_model.pt"), min_is_best=True
     )
     
-
     logging.info(f"= Start training")
     for e in range(config["nepochs"]):
         # Train 1 epoch
@@ -136,21 +133,14 @@ def test(config):
 
     logging.info("= Dataset")
     dataset_test = data.PlanktonDataset(
-        config['data']['testpath'],config['data']['patch_size'],mode='test')
+        config['data']['trainpath'],config['data']['patch_size'],mode='test')
     dataset_train = data.PlanktonDataset(
         config['data']['trainpath'],config['data']['patch_size'])
     input_size = tuple(dataset_train[0][0].shape)
     num_classes = input_size[0]
 
-    logging.info(f"Train path: {config['data']['trainpath']}")
-    logging.info(f"Files in testpath: {os.listdir(config['data']['testpath'])}")
-
-    logging.info(f"Test path: {config['data']['testpath']}")
-    logging.info(f"Number of train images: {len(dataset_train.image_files)}")
-    logging.info(f"Number of test images: {len(dataset_test.image_files)}")
-
-    print(len(dataset_train))
     print(len(dataset_test))
+    print(len(dataset_train))
 
     logging.info("= Model")
     model_config = config["model"]
@@ -159,35 +149,63 @@ def test(config):
     model.load_state_dict(torch.load(model_name))
     model.eval()
 
-
-    logging.info("= Predict masks for all test images")
-    for image_idx, (num_patches_x, num_patches_y) in enumerate(dataset_test.image_patches):
-        logging.info(f"Predicting patches for image {image_idx}")
-        for idx_patch in range(num_patches_x * num_patches_y):
-            global_idx = idx_patch + sum(
-                x * y for x, y in dataset_test.image_patches[:image_idx]
-            )  # Calcul de l'index global
-            #logging.info(f"  - predict mask {global_idx} (patch {idx_patch} in image {image_idx})")
-            image = dataset_test[global_idx].unsqueeze(0).to(device)
-            dataset_test.insert(model.predict(image))
-
-    logging.info(f"Total test images: {len(dataset_test.image_files)}")
-    logging.info(f"Total patches predicted: {len(dataset_test.mask_files)}")
+    logging.info("= Predict first image")
+    for idx_img in range(dataset_test.image_patches[0][0]*dataset_test.image_patches[0][1]):
+        logging.info(f"  - predict mask {idx_img}")
+        image = dataset_test[idx_img].unsqueeze(0).to(device)
+        dataset_test.insert(model.predict(image))
+    
+    print(dataset_test.mask_files[0][0])
 
     logging.info("= Reconstruct image")
-    #dataset_test.show_plankton_complete_image(0,"image_reconstruct_1.png")
+    dataset_test.show_plankton_complete_image(0,"image_reconstruct_1.png")
 
     logging.info("= Compare masks")
-    #dataset_test.show_compare_mask(0,dataset_train,"compare_mask_1.png")
-    #dataset_test.show_predicted_mask()
+    dataset_test.show_compare_mask(0,dataset_train,"compare_mask_1.png")
+
+def sub(config):
+    use_cuda = torch.cuda.is_available()
+    device = torch.device("cuda") if use_cuda else torch.device("cpu")
+    model_name = config['test']['model_path'] + config['test']['model_name']
+    config = yaml.safe_load(open(config['test']['model_path']+ config['test']['model_config'], "r"))
+
+    logging.info("= Dataset")
+    dataset_test = data.PlanktonDataset(
+        config['data']['testpath'],config['data']['patch_size'],mode='test')
+    input_size = tuple(dataset_test[0].shape)
+    num_classes = input_size[0]
+    logging.info(f"  -  number of sample: {len(dataset_test)}")
+
+    logging.info("= Model")
+    model_config = config["model"]
+    model = models.build_model(model_config, input_size, num_classes)
+    model.to(device)
+    model.load_state_dict(torch.load(model_name))
+    model.eval()
+
+    logging.info("= Predict masks")
+    for idx_img in range(len(dataset_test)):
+        if idx_img % 400 == 0:
+            logging.info(f"  - predict mask {idx_img}")
+        image = dataset_test[idx_img].unsqueeze(0).to(device)
+        dataset_test.insert(model.predict(image))
+
+    logging.info("= To submit")
     dataset_test.to_submission()
 
 
 if __name__ == "__main__":
     logging.basicConfig(stream=sys.stdout, level=logging.INFO, format="%(message)s")
 
+    # check in advance if cuda is available
+    if torch.cuda.is_available():
+        print("CUDA is available!")
+        print(f"Device name: {torch.cuda.get_device_name(0)}")
+    else:
+        print("CUDA is NOT available.")
+
     if len(sys.argv) != 3:
-        logging.error(f"Usage : {sys.argv[0]} config.yaml <train|test>")
+        logging.error(f"Usage : {sys.argv[0]} config.yaml <train|test|sub>")
         sys.exit(-1)
 
     logging.info("Loading {}".format(sys.argv[1]))

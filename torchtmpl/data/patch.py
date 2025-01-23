@@ -1,73 +1,12 @@
-'''
-This script illustrates how to extract a patch, efficiently from the PPM of the scan and mask
-
-The PPM format is very convenient because its regular uncompressed structure allows to access a subpart
-of an image by shifting a file pointer.
-'''
-
 import numpy as np
-import matplotlib.pyplot as plt
-
-def show_plankton_image(img, mask, image_name = "plankton_sample.png"):
-    """
-    Display an image and its mask side by side
-
-    img is either (H, W, 1)
-    mask is either (H, W)
-    """
-
-    img = img.squeeze()
-
-    plt.subplot(1, 2, 1)
-    plt.imshow(img, cmap="gray")
-    plt.title("Image")
-    plt.axis("off")
-
-    plt.subplot(1, 2, 2)
-    plt.imshow(mask, interpolation="none", cmap="tab20c")
-    plt.title("Mask")
-    plt.axis("off")
-
-    plt.tight_layout()
-    plt.savefig(image_name, bbox_inches="tight", dpi=300)
-    
-    # plt.show()
-    # UserWarning: FigureCanvasAgg is non-interactive, and thus cannot be shown
-
-
-def show_plankton_mask(real_mask, predict_mask, image_name = "compare_mask.png"):
-    """
-    Display an real mask and its prediction side by side
-
-    mask is either (H, W)
-    """
-
-    plt.subplot(1, 2, 1)
-    plt.imshow(real_mask, interpolation="none", cmap="tab20c")
-    plt.title("Real Mask")
-    plt.axis("off")
-
-    plt.subplot(1, 2, 2)
-    plt.imshow(predict_mask, interpolation="none", cmap="tab20c")
-    plt.title("Predict Mask")
-    plt.axis("off")
-
-    plt.tight_layout()
-    plt.savefig(image_name, bbox_inches="tight", dpi=300)
-    
-    # plt.show()
-    # UserWarning: FigureCanvasAgg is non-interactive, and thus cannot be shown
-
 
 def extract_ppm_size(ppm_path):
     """
     Extract a size from a PPM image
-
     Arguments:
-    - ppm_path: the path to the PPM image
-
+        - ppm_path: the path to the PPM image
     Returns:
-    - size: the size of ppm
+        - size: the size of ppm
     """
     # Read the PPM image and extract the patch
     with open(ppm_path, "rb") as f:
@@ -85,15 +24,13 @@ def extract_ppm_size(ppm_path):
 def extract_patch_from_ppm(ppm_path, row_idx, col_idx, patch_size):
     """
     Extract a patch from a PPM image
-
     Arguments:
-    - ppm_path: the path to the PPM image
-    - row_idx: the row index of the patch
-    - col_idx: the column index of the patch
-    - patch_size: the size of the patch (width, height)
-
+        - ppm_path: the path to the PPM image
+        - row_idx: the row index of the patch
+        - col_idx: the column index of the patch
+        - patch_size: the size of the patch (width, height)
     Returns:
-    - patch: the extracted patch
+        - patch: the extracted patch
     """
     # Read the PPM image and extract the patch
     with open(ppm_path, "rb") as f:
