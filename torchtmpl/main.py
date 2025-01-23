@@ -26,6 +26,7 @@ def train(config):
 
     if "wandb" in config["logging"]:
         wandb_config = config["logging"]["wandb"]
+        os.environ["WANDB_MODE"] = "offline"
         wandb.init(project=wandb_config["project"], entity=wandb_config["entity"])
         wandb_log = wandb.log
         wandb_log(config)
@@ -49,7 +50,11 @@ def train(config):
 
     # Build the loss
     logging.info("= Loss")
-    loss = optim.get_loss(config["loss"])
+    if config["loss"] == "BCEWithLogitsLoss":
+        pos_weight = torch.tensor([config["pos_weight"]], device=device)  # Convertir en tenseur et définir le périphérique
+        loss = torch.nn.BCEWithLogitsLoss(pos_weight=pos_weight)  #pondération de la loss.
+    else:
+        loss = optim.get_loss(config["loss"])
 
     # Build the optimizer
     logging.info("= Optimizer")
@@ -96,7 +101,7 @@ def train(config):
 
     # Define the early stopping callback
     model_checkpoint = utils.ModelCheckpoint(
-        model, str(logdir / "best_model.pt"), min_is_best=True
+        model, str(logdir / "best_model.pt"), min_is_best=False
     )
     
     logging.info(f"= Start training")
@@ -105,21 +110,23 @@ def train(config):
         train_loss = utils.train(model, train_loader, loss, optimizer, device)
 
         # Test
-        test_loss = utils.test(model, valid_loader, loss, device)
+        test_loss, test_f1 = utils.test(model, valid_loader, loss, device)
 
-        updated = model_checkpoint.update(test_loss)
+        # Utiliser le F1-score pour évaluer le modèle
+        updated = model_checkpoint.update(test_f1)
         logging.info(
-            "[%d/%d] Test loss : %.3f %s"
+            "[%d/%d] Test loss : %.3f, Test F1-score : %.3f %s"
             % (
                 e,
                 config["nepochs"],
                 test_loss,
-                "[>> BETTER <<]" if updated else "",
+                test_f1,
+                "[>> BETTER F1-score <<]" if updated else "",
             )
         )
 
         # Update the dashboard
-        metrics = {"train_CE": train_loss, "test_CE": test_loss}
+        metrics = {"train_CE": train_loss, "test_CE": test_loss, "test_F1": test_f1}
         if wandb_log is not None:
             logging.info("Logging on wandb")
             wandb_log(metrics)
@@ -194,6 +201,8 @@ def sub(config):
 
     logging.info("= To submit")
     dataset_test.to_submission()
+
+
 
 
 if __name__ == "__main__":

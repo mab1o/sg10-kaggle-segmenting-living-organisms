@@ -47,7 +47,41 @@ def test_unet():
     assert y.shape == (1, num_classes, input_size[1], input_size[2])
 
 
+
+def test_efficientnet_b3_segmentation():
+    import torch
+    from timm import create_model
+    from efficientnet_b3_segmentation import EfficientNetB3Segmentation  # Ensure your class is named and imported correctly
+
+    logging.info("Testing EfficientNet-B3 Segmentation")
+    input_channels = 1  # Number of input channels (e.g., grayscale = 1, RGB = 3)
+    input_size = (input_channels, 256, 256)  # Example input size (C, H, W)
+    num_classes = 1  # Binary segmentation (adjust if needed)
+
+    # Instantiate the model
+    model = EfficientNetB3Segmentation(input_channels=input_channels, num_classes=num_classes)
+
+    # Set the model to evaluation mode
+    model.eval()
+
+    # Generate a dummy input tensor
+    batch_size = 1  # Single image for testing
+    X = torch.randn(batch_size, *input_size)  # Example input with random values
+
+    # Forward pass
+    with torch.no_grad():
+        y = model(X)
+
+    # Print output shape
+    print(f"Input shape: {X.shape}")
+    print(f"Output shape: {y.shape}")
+
+    # Assert that the output shape matches the expected size
+    assert y.shape == (batch_size, num_classes, input_size[1], input_size[2]), \
+        "Output shape does not match expected shape!"
+
 if __name__ == "__main__":
     # test_linear()
     # test_cnn()
-    test_unet()
+    #test_unet()
+    test_efficientnet_b3_segmentation()

@@ -30,11 +30,9 @@ python -m torchtmpl.main config.yaml train
 ```
 
 And for testing and creating the submission.csv
-python -m torchtmpl.main config.yaml test
-
 
 ```
-python main.py path/to/your/run test
+python -m torchtmpl.main config.yaml test
 ```
 
 ### Cluster experimentation (**not yet implemented**)

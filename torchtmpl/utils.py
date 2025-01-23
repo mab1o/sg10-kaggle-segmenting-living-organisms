@@ -8,6 +8,9 @@ import torch
 import torch.nn
 import tqdm
 from torch.amp import GradScaler, autocast
+from sklearn.metrics import f1_score
+import numpy as np
+from sklearn.metrics import precision_recall_fscore_support
 
 
 def generate_unique_logpath(logdir, raw_run_name):
@@ -122,12 +125,15 @@ def test(model, loader, f_loss, device):
     Test a model over the loader
     using the f_loss as metrics
     Arguments :
-    model     -- A torch.nn.Module object
-    loader    -- A torch.utils.data.DataLoader
-    f_loss    -- The loss function, i.e. a loss Module
-    device    -- A torch.device
+        model     -- A torch.nn.Module object
+        loader    -- A torch.utils.data.DataLoader
+        f_loss    -- The loss function, i.e. a loss Module
+        device    -- A torch.device
     Returns :
+        total_loss -- The average loss over the dataset
+        f1         -- The F1-score computed over the dataset
     """
+
 
     # We enter eval mode.
     # This is important for layers such as dropout, batchnorm, ...
@@ -135,18 +141,53 @@ def test(model, loader, f_loss, device):
 
     total_loss = 0
     num_samples = 0
-    for (inputs, targets) in loader:
 
-        inputs, targets = inputs.to(device), targets.to(device)
 
-        # Compute the forward propagation
-        outputs = model(inputs).squeeze(1)
+    # Running totals for precision, recall, F1
+    total_precision = 0
+    total_recall = 0
+    total_f1 = 0
+    num_batches = 0
 
-        loss = f_loss(outputs, targets)
+    with torch.no_grad():
+        for (inputs, targets) in loader:
+            inputs, targets = inputs.to(device), targets.to(device)
 
-        # Update the metrics
-        # We here consider the loss is batch normalized
-        total_loss += inputs.shape[0] * loss.item()
-        num_samples += inputs.shape[0]
+            # Compute the forward propagation
+            outputs = model(inputs).squeeze(1)
+            loss = f_loss(outputs, targets)
 
-    return total_loss / num_samples
+            # Update the metrics
+            # We here consider the loss is batch normalized
+            total_loss += loss.item() * inputs.size(0)
+            num_samples += inputs.size(0)
+
+            # Store predictions and targets for F1-score calculation
+            preds = (torch.sigmoid(outputs) > 0.5).int()  # Convert logits to binary predictions
+
+            # Move tensors to CPU and convert to NumPy
+            preds_np = preds.cpu().numpy().flatten()
+            targets_np = targets.cpu().numpy().flatten()
+
+            # Debugging: Ensure binary values
+            assert set(preds_np).issubset({0, 1}), "Predictions contain non-binary values"
+            assert set(targets_np).issubset({0, 1}), "Targets contain non-binary values"
+
+            # Compute precision, recall, and F1 for the batch
+            precision, recall, f1, _ = precision_recall_fscore_support(
+                targets_np, preds_np, average="binary", zero_division=0
+            )
+
+            # Update running totals
+            total_precision += precision
+            total_recall += recall
+            total_f1 += f1
+            num_batches += 1
+
+    # Compute the average loss
+    avg_loss = total_loss / num_samples
+
+    # Compute the average F1-score
+    avg_f1 = total_f1 / num_batches
+
+    return avg_loss, avg_f1

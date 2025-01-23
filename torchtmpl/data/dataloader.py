@@ -29,7 +29,7 @@ def get_dataloaders(data_config, use_cuda):
     valid_ratio = data_config["valid_ratio"]
     batch_size = data_config["batch_size"]
     num_workers = data_config["num_workers"]
-
+    quick_test = data_config["quick_test"]
     logging.info("  - Dataset creation (PlanktonDataset)")
 
     base_dataset = planktonds.PlanktonDataset(
@@ -43,15 +43,30 @@ def get_dataloaders(data_config, use_cuda):
     indices = list(range(len(base_dataset)))
     random.shuffle(indices)
     num_valid = int(valid_ratio * len(base_dataset))
-    train_indices = indices[num_valid:]
-    valid_indices = indices[:num_valid]
+
+
+    if quick_test:  # Mode test rapide
+        train_indices = indices[0:1800]
+        valid_indices = indices[1800:2000]
+        logging.info("Quick test mode enabled: Using a small subset of the dataset.")
+    else:
+        train_indices = indices[num_valid:]
+        valid_indices = indices[:num_valid]
+
 
     train_dataset = torch.utils.data.Subset(base_dataset, train_indices)
     valid_dataset = torch.utils.data.Subset(base_dataset, valid_indices)
 
+
+    # Attribuer un poids inversement proportionnel à la classe
+    #weights = [1 / num_negatives if label == 0 else 1 / num_positives for label in labels]
+    #sampler = WeightedRandomSampler(weights, len(weights))
+
+
     # Build the dataloaders
     train_loader = torch.utils.data.DataLoader(
         train_dataset,
+        #sampler = sampler,
         batch_size=batch_size,
         shuffle=True,
         num_workers=num_workers,
