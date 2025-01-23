@@ -35,6 +35,11 @@ And for testing and creating the submission.csv
 python -m torchtmpl.main config.yaml test
 ```
 
+For submitting the submission.csv file:
+```
+kaggle competitions submit -c 3md4040-2025-challenge -f submission.csv -m "Message"
+```
+
 ### Cluster experimentation (**not yet implemented**)
 
 For running the code on a cluster, we provide an example script for starting an experimentation on a SLURM based cluster.
