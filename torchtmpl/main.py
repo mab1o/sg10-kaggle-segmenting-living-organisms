@@ -95,7 +95,7 @@ def train(config):
     )
     with open(logdir / "summary.txt", "w") as f:
         f.write(summary_text)
-    logging.info(summary_text)
+    #logging.info(summary_text)
     if wandb_log is not None:
         wandb.log({"summary": summary_text})
 
@@ -115,7 +115,7 @@ def train(config):
         # Utiliser le F1-score pour évaluer le modèle
         updated = model_checkpoint.update(test_f1)
         logging.info(
-            "[%d/%d] Test loss : %.3f, Test F1-score : %.3f %s"
+            "[%d/%d] Test loss : %.4f, Test F1-score : %.4f %s"
             % (
                 e,
                 config["nepochs"],
