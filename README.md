@@ -30,11 +30,14 @@ python -m torchtmpl.main config.yaml train
 ```
 
 And for testing and creating the submission.csv
-python -m torchtmpl.main config.yaml test
-
 
 ```
-python main.py path/to/your/run test
+python -m torchtmpl.main config.yaml test
+```
+
+For submitting the submission.csv file:
+```
+kaggle competitions submit -c 3md4040-2025-challenge -f submission.csv -m "Message"
 ```
 
 ### Cluster experimentation (**not yet implemented**)
