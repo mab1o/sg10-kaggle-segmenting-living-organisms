@@ -1,5 +1,6 @@
 from .dataloader import get_dataloaders
 from .planktonds import PlanktonDataset
+from .visualization import *
 
 """
 __main__: test file
