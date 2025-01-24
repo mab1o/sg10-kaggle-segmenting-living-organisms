@@ -137,6 +137,7 @@ def test(config):
     dataset_train = data.PlanktonDataset(
         config['data']['trainpath'],config['data']['patch_size'])
     input_size = tuple(dataset_train[0][0].shape)
+    print ("="*90, input_size)
     num_classes = input_size[0]
 
     print(len(dataset_test))
@@ -151,17 +152,18 @@ def test(config):
 
     logging.info("= Predict first image")
     for idx_img in range(dataset_test.image_patches[0][0]*dataset_test.image_patches[0][1]):
-        logging.info(f"  - predict mask {idx_img}")
+        if(idx_img % 400 == 0):
+            logging.info(f"  - predict mask {idx_img}")
         image = dataset_test[idx_img].unsqueeze(0).to(device)
         dataset_test.insert(model.predict(image))
     
     print(dataset_test.mask_files[0][0])
 
     logging.info("= Reconstruct image")
-    dataset_test.show_plankton_complete_image(0,"image_reconstruct_1.png")
+    data.show_image_mask_from(dataset_test,0,"image_reconstruct_1.png")
 
     logging.info("= Compare masks")
-    dataset_test.show_compare_mask(0,dataset_train,"compare_mask_1.png")
+    data.show_mask_predict_compare_to_real(dataset_test,0,dataset_train,"compare_mask_1.png")
 
 def sub(config):
     use_cuda = torch.cuda.is_available()

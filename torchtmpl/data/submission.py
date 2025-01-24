@@ -2,7 +2,7 @@ import numpy as np
 import torch
 from typing import List
 
-def generate_submission_file(predictions : List[torch.Tensor], ordered_files : List[torch.Tensor], file_name = "submission.csv"):
+def generate_submission_file(predictions : List[torch.Tensor], ordered_files : List[str], file_name = "submission.csv"):
     """
     Generate the CSV file for kaggle submission
     Args :

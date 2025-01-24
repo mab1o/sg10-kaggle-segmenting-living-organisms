@@ -38,6 +38,6 @@ model:
     model_name: resnet18
 
 test:
-  model_path: 'logs/UNet_0/'
+  model_path: 'logs/UNet_3/'
   model_name: 'best_model.pt'
   model_config: 'config.yaml'

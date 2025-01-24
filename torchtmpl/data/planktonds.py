@@ -143,10 +143,15 @@ class PlanktonDataset(Dataset):
         assert self.mode == 'test', "to_submission must be use for test dataset"
         assert file_name.endswith('.csv'), "File name must end with .csv"
         
+        if self.mode == 'train':
+            name_mask = self.mask_files
+        else:
+            name_mask = [f.replace('_scan.png.ppm', '_mask.png.ppm') for f in self.image_files]
+
         predictions = [
             self.reconstruct_mask(image_id) for image_id in range(len(self.image_files))
         ]
-        submission.generate_submission_file(predictions, file_name)
+        submission.generate_submission_file(predictions, name_mask, file_name)
 
 
     def reconstruct_mask(self, idx):
