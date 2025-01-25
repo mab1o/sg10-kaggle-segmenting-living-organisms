@@ -25,6 +25,8 @@ class EfficientNetB3Segmentation(nn.Module):
         # Upsample to match the target size
         return F.interpolate(output, size=(x.size(2), x.size(3)), mode='bilinear', align_corners=False)
     
+
+    # return binary prediction mask
     def predict(self, x):
         self.eval()
         with torch.no_grad():
@@ -32,3 +34,15 @@ class EfficientNetB3Segmentation(nn.Module):
             probs = torch.sigmoid(logits)
             binary_mask = (probs > 0.5).long()
             return binary_mask.squeeze(1).squeeze(0)
+    
+    # return probability prediction mask
+    # we return a probability and not a binary prediction to be able to print the heatmap of probability.
+    def predict_probs(self, x):
+        """
+        Predict method returning logits (before sigmoid) for visualization or evaluation.
+        """
+        self.eval()
+        with torch.no_grad():
+            logits = self.forward(x)
+            probs = torch.sigmoid(logits)
+            return probs

@@ -132,6 +132,8 @@ def train(config):
             wandb_log(metrics)
 
 
+
+# Use for visualize and validate result with binary prediction.
 def test(config):
     use_cuda = torch.cuda.is_available()
     device = torch.device("cuda") if use_cuda else torch.device("cpu")
@@ -157,6 +159,8 @@ def test(config):
     model.load_state_dict(torch.load(model_name))
     model.eval()
 
+
+    # Seconde partie de test: Utiliser les prédiction
     logging.info("= Predict first image")
     for idx_img in range(dataset_test.image_patches[0][0]*dataset_test.image_patches[0][1]):
         if(idx_img % 400 == 0):
@@ -171,6 +175,53 @@ def test(config):
 
     logging.info("= Compare masks")
     data.show_mask_predict_compare_to_real(dataset_test,0,dataset_train,"compare_mask_1.png")
+
+
+
+# Use for visualize and validate result with probability instead of binary prediction.
+def test_proba(config):
+    use_cuda = torch.cuda.is_available()
+    device = torch.device("cuda") if use_cuda else torch.device("cpu")
+    model_name = config['test']['model_path'] + config['test']['model_name']
+    config = yaml.safe_load(open(config['test']['model_path']+ config['test']['model_config'], "r"))
+
+    logging.info("= Dataset")
+    dataset_test = data.PlanktonDataset(
+        config['data']['testpath'],config['data']['patch_size'],mode='test')
+    dataset_train = data.PlanktonDataset(
+        config['data']['trainpath'],config['data']['patch_size'])
+    input_size = tuple(dataset_train[0][0].shape)
+    print ("="*90, input_size)
+    num_classes = input_size[0]
+
+    print(len(dataset_test))
+    print(len(dataset_train))
+
+    logging.info("= Model")
+    model_config = config["model"]
+    model = models.build_model(model_config, input_size, num_classes)
+    model.to(device)
+    model.load_state_dict(torch.load(model_name))
+    model.eval()
+
+
+    # Seconde partie de test_with_proba: Utiliser les probabilités pour comparer avec les masques réels
+    logging.info("= Predict probabilities and compare to real masks")
+    dataset_test_proba = data.PlanktonDataset(  # Copie dédiée aux probabilités
+        config['data']['testpath'], config['data']['patch_size'], mode='test'
+    )
+    for idx_img in range(dataset_test.image_patches[0][0] * dataset_test.image_patches[0][1]):
+        if idx_img % 400 == 0:
+            logging.info(f"  - Predicting probabilities for mask {idx_img}")
+        image = dataset_test[idx_img].unsqueeze(0).to(device)
+
+        # Récupérer les probabilités
+        probs = model.predict_probs(image)
+        dataset_test_proba.insert(probs)  # Stocke uniquement les probabilités dans ce dataset
+
+    # Visualiser les probabilités comparées aux masques réels
+    data.show_mask_proba_compare_to_real(dataset_test_proba, 0, dataset_train, "proba_compared_real_1.png")
+
 
 def sub(config):
     use_cuda = torch.cuda.is_available()
@@ -216,11 +267,18 @@ if __name__ == "__main__":
         print("CUDA is NOT available.")
 
     if len(sys.argv) != 3:
-        logging.error(f"Usage : {sys.argv[0]} config.yaml <train|test|sub>")
+        logging.error(f"Usage : {sys.argv[0]} config.yaml <train|test|test_proba|sub>")
         sys.exit(-1)
 
-    logging.info("Loading {}".format(sys.argv[1]))
+    logging.info(f"Loading configuration from {sys.argv[1]}")
     config = yaml.safe_load(open(sys.argv[1], "r"))
 
+    # Ensure the command is valid
     command = sys.argv[2]
+    valid_commands = ["train", "test", "test_proba", "sub"]
+    if command not in valid_commands:
+        logging.error(f"Invalid command: {command}. Valid commands are: {', '.join(valid_commands)}")
+        sys.exit(-1)
+
+    # Execute the command
     eval(f"{command}(config)")

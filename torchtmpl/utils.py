@@ -105,23 +105,12 @@ def train(model, loader, f_loss, optimizer, device, dynamic_display=True):
         scaler.update()
 
         # Vidage de mémoire et diagnostic (à espacer pour éviter des ralentissements)
-<<<<<<< HEAD
         # if i % 300 == 0 and device == torch.device("cuda"):
         #   print("Avant vidage du cache:")
         #   print(torch.cuda.memory_summary())
         #   torch.cuda.empty_cache()
         #   print("Après vidage du cache:")
         #  print(torch.cuda.memory_summary())
-=======
-        if i % 400 == 0:  # Toutes les 400 itérations
-            #print("Avant vidage du cache:")
-            #print(torch.cuda.memory_summary())
-            torch.cuda.empty_cache()
-            if i % 800 == 0: 
-                print("Après vidage du cache:")
-                #print(torch.cuda.memory_summary())
-
->>>>>>> 1fea7b3 (feat(train): Removed a summary print and updated the config.yaml)
 
         # Update the metrics
         # We here consider the loss is batch normalized

@@ -122,3 +122,45 @@ def show_tensor_image_given(X):
         plt.imshow(X, cmap="gray")
     plt.axis("off")
     plt.show()
+
+
+def show_mask_proba_compare_to_real(ds: planktonds.PlanktonDataset, idx, real_dataset, image_name="proba_compared_real.png"):
+    """
+    Compare the predicted probability heatmap with the real mask for an image.
+    Args:
+        ds (PlanktonDataset): Dataset object with predicted probabilities.
+        idx (int): Index of the image.
+        real_dataset (PlanktonDataset): Dataset with real masks.
+        image_name (str): File name to save the resulting figure.
+    """
+    assert 0 <= idx < len(ds.image_files), f"Index {idx} out of range. Dataset has {len(ds.image_files)} images."
+    assert isinstance(real_dataset, planktonds.PlanktonDataset), "real_dataset must be an instance of PlanktonDataset."
+
+    # Load the real mask
+    real_mask_path = os.path.join(real_dataset.image_mask_dir, real_dataset.mask_files[idx])
+    real_mask = patch.extract_patch_from_ppm(real_mask_path, 0, 0, real_dataset.images_size[idx])
+    real_mask = np.where(real_mask < 8, 0, 1)  # Ensure binary mask
+
+    # Load predicted probabilities
+    proba_mask = ds.reconstruct_mask(idx, False)  # Probabilities (not binary) we say false to indicate that it is not binary
+
+    # Plot heatmap vs real mask
+    plt.figure(figsize=(10, 5))
+
+    # Probability heatmap
+    plt.subplot(1, 2, 1)
+    plt.imshow(proba_mask, cmap="viridis")  # Heatmap for probabilities
+    plt.title("Predicted Probabilities (Heatmap)")
+    plt.colorbar()
+    plt.axis("off")
+
+    # Real mask
+    plt.subplot(1, 2, 2)
+    plt.imshow(real_mask, cmap="tab20c")  # Real mask with class coloring
+    plt.title("Real Mask")
+    plt.axis("off")
+
+    # Save the figure
+    plt.tight_layout()
+    plt.savefig(image_name, bbox_inches="tight", dpi=300)
+    logging.info(f"  - Saved probability vs real mask comparison to {image_name}")

@@ -154,7 +154,7 @@ class PlanktonDataset(Dataset):
         submission.generate_submission_file(predictions, name_mask, file_name)
 
 
-    def reconstruct_mask(self, idx):
+    def reconstruct_mask(self, idx, binary=True):
         """
         Reconstruct the full mask for a given image.
         Args:
@@ -181,11 +181,19 @@ class PlanktonDataset(Dataset):
                 y_start = y * patch_width
                 x_end = min((x + 1) * patch_height, height)
                 y_end = min((y + 1) * patch_width, width)
-                patch_x_start = ((x + 1)*patch_height) - x_end
-                patch_y_start = ((y + 1)*patch_width ) - y_end
-                
-                reconstruct_mask[x_start:x_end,y_start:y_end] = patch[patch_x_start:,patch_y_start:]
-                patch_index += 1
+                # Calculate start indices for the patch slice
+                patch_x_start = max(0, (x + 1) * patch_height - x_end)
+                patch_y_start = max(0, (y + 1) * patch_width - y_end)
+
+                if binary:
+                    reconstruct_mask[x_start:x_end,y_start:y_end] = patch[patch_x_start:,patch_y_start:]
+                else:
+                    # Transpose patch dimensions if necessary
+                    if patch.dim() == 4:  # For shape [1, C, H, W]
+                        patch = patch.squeeze(0).squeeze(0)  # Remove redundant dims
+                    if patch.shape != reconstruct_mask[x_start:x_end, y_start:y_end].shape:
+                        patch = patch.T  # Transpose if mismatched
+                    reconstruct_mask[x_start:x_end, y_start:y_end] = patch[patch_x_start:, patch_y_start:]
 
         return reconstruct_mask
 
