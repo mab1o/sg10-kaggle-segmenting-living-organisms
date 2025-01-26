@@ -265,7 +265,7 @@ def sub(config):
             image = dataset_test[global_idx].unsqueeze(0).to(device)
             
             # put threshold at the value given py test_proba.
-            threshold = 0.93
+            threshold = 0.5
             dataset_test.insert(model.predict(image, threshold))
 
 

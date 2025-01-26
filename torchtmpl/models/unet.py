@@ -105,13 +105,21 @@ class UNet(nn.Module):
         prediction = self.decoder(out, features)
         return prediction
     
-    def predict(self, X):
+    def predict(self, X, threshold=0.5):
         self.eval()
         with torch.no_grad():
             logits = self.forward(X)
             probs = torch.sigmoid(logits)
-            binary_mask = (probs > 0.5).long()
+            binary_mask = (probs > threshold).long()
             return binary_mask.squeeze(1).squeeze(0)
+
+    def predict_probs(self, X):
+        self.eval()
+        with torch.no_grad():
+            logits = self.forward(X)
+            probs = torch.sigmoid(logits)
+            return probs
+
 
 
 def test_timm():
