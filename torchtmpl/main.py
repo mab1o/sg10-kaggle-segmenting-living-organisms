@@ -17,6 +17,7 @@ from . import data
 from . import models
 from . import optim
 from . import utils
+from . import losses
 
 #os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "expandable_segments:True,max_split_size_mb:128"
 
@@ -50,11 +51,16 @@ def train(config):
 
     # Build the loss
     logging.info("= Loss")
-    if config["loss"] == "BCEWithLogitsLoss":
-        pos_weight = torch.tensor([config["pos_weight"]], device=device)  # Convertir en tenseur et définir le périphérique
-        loss = torch.nn.BCEWithLogitsLoss(pos_weight=pos_weight)  #pondération de la loss.
+    if config["loss"]["name"] == "BCEWithLogitsLoss":
+        pos_weight = torch.tensor([config["loss"].get("pos_weight", 1.0)], device=device)
+        loss = torch.nn.BCEWithLogitsLoss(pos_weight=pos_weight)
+    elif config["loss"]["name"] == "TverskyLoss":
+        alpha = config["loss"].get("alpha", 0.3)
+        beta = config["loss"].get("beta", 0.7)
+        loss = losses.TverskyLoss(alpha=alpha, beta=beta)
+        print("Using TverskyLoss with alpha =", alpha, "and beta =", beta)
     else:
-        loss = optim.get_loss(config["loss"])
+        loss = optim.get_loss(config["loss"]["name"])
 
     # Build the optimizer
     logging.info("= Optimizer")

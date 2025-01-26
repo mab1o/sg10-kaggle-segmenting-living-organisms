@@ -19,10 +19,14 @@ scheduler:
     eta_min: 1e-6
 
 nepochs: 4
-# loss: "CrossEntropyLoss"
-loss : "BCEWithLogitsLoss"
+# loss: "CrossEntropyLoss", "BCEWithLogitsLoss"
 #pos_weight: 19.63  # Calculé comme (num_negatives / num_positives) avec environ 5% de positif. Put at 1 to desactivate
 pos_weight: 1 #reduced the value to avoid instability
+loss: 
+  name: "TverskyLoss"
+  alpha: 0.3
+  beta: 0.7
+
 logging:
   wandb: 
     project: "ChallengePlankton"
@@ -35,7 +39,7 @@ model:
   num_classes: 1     # Binary segmentation
 
 test:
-  model_path: 'logs/EfficientNetB3Segmentation_1/'
+  model_path: 'logs/EfficientNetB3Segmentation_3/'
   model_name: 'best_model.pt'
   model_config: 'config.yaml'
 

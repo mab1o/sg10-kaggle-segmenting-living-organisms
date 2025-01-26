@@ -174,8 +174,12 @@ def show_predicted_mask_proba_vs_real_mask_binary(
     # After 5 iterations, pick the midpoint of [low, high]
     best_threshold = (low + high) / 2
     best_f1 = f1_at_threshold(best_threshold)
+    
 
     logging.info(f"[Ternary Search] Best threshold ~ {best_threshold:.4f}, F1 = {best_f1:.4f}")
+
+    f1_threshold_0_5 = f1_at_threshold(0.5)
+    logging.info(f"Default 0.5 threshold, F1 = {f1_threshold_0_5:.4f}")
 
     # 4) Plot only probability heatmap + real mask side by side
     plt.figure(figsize=(10, 5))
@@ -194,8 +198,11 @@ def show_predicted_mask_proba_vs_real_mask_binary(
     plt.axis("off")
 
     # Add the best threshold as a title or annotation
-    plt.suptitle(f"Best threshold = {best_threshold:.2f}", fontsize=14, y=0.98)
-
+    plt.suptitle(
+        f"Thresholds: Best = {best_threshold:.2f} (F1 = {best_f1:.4f}), 0.5 (F1 = {f1_threshold_0_5:.4f})",
+        fontsize=12,
+        y=0.98
+    )
 
     plt.tight_layout()
     plt.savefig(image_name, bbox_inches="tight", dpi=300)

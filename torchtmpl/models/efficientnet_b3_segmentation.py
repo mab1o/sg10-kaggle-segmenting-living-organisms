@@ -27,12 +27,12 @@ class EfficientNetB3Segmentation(nn.Module):
     
 
     # return binary prediction mask
-    def predict(self, x):
+    def predict(self, x, threshold=0.28):
         self.eval()
         with torch.no_grad():
             logits = self.forward(x)
             probs = torch.sigmoid(logits)
-            binary_mask = (probs > 0.5).long()
+            binary_mask = (probs > threshold).long()
             return binary_mask.squeeze(1).squeeze(0)
     
     # return probability prediction mask
