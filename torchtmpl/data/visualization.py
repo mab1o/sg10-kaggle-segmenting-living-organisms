@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 import os
 import torch
 import logging
-from scipy.ndimage import zoom
+from sklearn.metrics import f1_score
 
 # Local imports
 from . import patch
@@ -124,44 +124,79 @@ def show_tensor_image_given(X):
     plt.axis("off")
     plt.show()
 
-
-def show_predicted_mask_proba_vs_real_mask_binary(ds: planktonds.PlanktonDataset, idx, real_dataset, image_name="proba_compared_real.png"):
+def show_predicted_mask_proba_vs_real_mask_binary(
+    ds: planktonds.PlanktonDataset, 
+    idx: int, 
+    real_dataset: planktonds.PlanktonDataset, 
+    image_name: str = "proba_compared_real.png"
+):
     """
-    Compare the predicted probability heatmap with the real mask for an image.
-    Args:
-        ds (PlanktonDataset): Dataset object with predicted probabilities.
-        idx (int): Index of the image.
-        real_dataset (PlanktonDataset): Dataset with real masks.
-        image_name (str): File name to save the resulting figure.
+    Compare the predicted probability heatmap with the real mask for an image,
+    and estimate the best threshold (for F1) using a ternary search across [0,1].
+    We do 5 iterations, and only display the heatmap + real mask side by side.
     """
-    assert 0 <= idx < len(ds.image_files), f"Index {idx} out of range. Dataset has {len(ds.image_files)} images."
-    assert isinstance(real_dataset, planktonds.PlanktonDataset), "real_dataset must be an instance of PlanktonDataset."
 
-    # Load the real mask
+    assert 0 <= idx < len(ds.image_files), f"Index {idx} out of range."
+    assert isinstance(real_dataset, planktonds.PlanktonDataset), \
+        "real_dataset must be an instance of PlanktonDataset."
+
+    # 1) Load the real mask
     real_mask_path = os.path.join(real_dataset.image_mask_dir, real_dataset.mask_files[idx])
     real_mask = patch.extract_patch_from_ppm(real_mask_path, 0, 0, real_dataset.images_size[idx])
-    real_mask = np.where(real_mask < 8, 0, 1)  # Ensure binary mask
+    real_mask = np.where(real_mask < 8, 0, 1).astype(np.uint8)
 
-    # Load predicted probabilities
-    proba_mask = ds.reconstruct_mask(idx, False)  # Probabilities (not binary) we say false to indicate that it is not binary
+    # 2) Load predicted probabilities
+    proba_mask = ds.reconstruct_mask(idx, binary=False)
 
-    # Plot heatmap vs real mask
+    # Helper to compute F1 at a given threshold
+    def f1_at_threshold(th):
+        bin_mask = (proba_mask > th).to(torch.uint8)
+        return f1_score(real_mask.flatten(), bin_mask.cpu().numpy().flatten(), zero_division=1)
+
+
+    # Ternary search is faster than gridsearch.
+    # 3) Ternary search for threshold in [low, high] with 5 iterations
+    low, high = 0.0, 1.0
+    for _ in range(5):
+        mid1 = low + (high - low) / 3
+        mid2 = high - (high - low) / 3
+
+        f1_1 = f1_at_threshold(mid1)
+        f1_2 = f1_at_threshold(mid2)
+
+        if f1_1 < f1_2:
+            # Best is in [mid1, high]
+            low = mid1
+        else:
+            # Best is in [low, mid2]
+            high = mid2
+
+    # After 5 iterations, pick the midpoint of [low, high]
+    best_threshold = (low + high) / 2
+    best_f1 = f1_at_threshold(best_threshold)
+
+    logging.info(f"[Ternary Search] Best threshold ~ {best_threshold:.4f}, F1 = {best_f1:.4f}")
+
+    # 4) Plot only probability heatmap + real mask side by side
     plt.figure(figsize=(10, 5))
 
-    # Probability heatmap
+    # (a) Predicted mask (Probability heatmap)
     plt.subplot(1, 2, 1)
-    plt.imshow(proba_mask, cmap="viridis")  # Heatmap for probabilities
+    plt.imshow(proba_mask, cmap="viridis")
     plt.title("Predicted Probabilities (Heatmap)")
     plt.colorbar()
     plt.axis("off")
 
-    # Real mask
+    # (b) Real mask (binary)
     plt.subplot(1, 2, 2)
-    plt.imshow(real_mask, cmap="tab20c")  # Real mask with class coloring
+    plt.imshow(real_mask, cmap="tab20c")
     plt.title("Real Mask")
     plt.axis("off")
 
-    # Save the figure
+    # Add the best threshold as a title or annotation
+    plt.suptitle(f"Best threshold = {best_threshold:.2f}", fontsize=14, y=0.98)
+
+
     plt.tight_layout()
     plt.savefig(image_name, bbox_inches="tight", dpi=300)
-    logging.info(f"  - Saved probability vs real mask comparison to {image_name}")
+    logging.info(f"Saved probability vs real mask comparison to {image_name}")

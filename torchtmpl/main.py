@@ -225,6 +225,7 @@ def test_proba(config):
         dataset_train_proba.insert(probs)  # Stocke uniquement les probabilités dans ce dataset
 
     # Visualiser le mask de proba prédit vs le mask binaire réel
+    # et calcule le meilleur seuil pour obtenir le plus grand F1-score
     data.show_predicted_mask_proba_vs_real_mask_binary(dataset_train_proba, 0, dataset_train, "proba_compared_real_1.png")
 
 
