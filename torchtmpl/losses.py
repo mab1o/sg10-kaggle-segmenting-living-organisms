@@ -7,7 +7,7 @@ class TverskyLoss(nn.Module):
     Tversky Loss = 1 - (TP / (TP + alpha*FP + beta*FN))
     alpha < beta => plus de pénalité sur les FN
     """
-    def __init__(self, alpha=0.3, beta=0.7, smooth=1e-5, reduction='mean'):
+    def __init__(self, alpha=0.3, beta=0.7, smooth=1e-4, reduction='mean'):
         super(TverskyLoss, self).__init__()
         self.alpha = alpha
         self.beta = beta

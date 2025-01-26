@@ -27,7 +27,6 @@ def train(config):
 
     if "wandb" in config["logging"]:
         wandb_config = config["logging"]["wandb"]
-        os.environ["WANDB_MODE"] = "offline"
         wandb.init(project=wandb_config["project"], entity=wandb_config["entity"])
         wandb_log = wandb.log
         wandb_log(config)
@@ -264,7 +263,10 @@ def sub(config):
             )  # Calcul de l'index global
             #logging.info(f"  - predict mask {global_idx} (patch {idx_patch} in image {image_idx})")
             image = dataset_test[global_idx].unsqueeze(0).to(device)
-            dataset_test.insert(model.predict(image))
+            
+            # put threshold at the value given py test_proba.
+            threshold = 0.93
+            dataset_test.insert(model.predict(image, threshold))
 
 
     logging.info("= To submit")
