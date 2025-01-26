@@ -35,7 +35,7 @@ model:
   num_classes: 1     # Binary segmentation
 
 test:
-  model_path: 'logs/EfficientNetB3Segmentation_0/'
+  model_path: 'logs/EfficientNetB3Segmentation_1/'
   model_name: 'best_model.pt'
   model_config: 'config.yaml'
 

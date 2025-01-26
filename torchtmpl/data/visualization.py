@@ -4,6 +4,7 @@ import matplotlib.pyplot as plt
 import os
 import torch
 import logging
+from scipy.ndimage import zoom
 
 # Local imports
 from . import patch
@@ -124,7 +125,7 @@ def show_tensor_image_given(X):
     plt.show()
 
 
-def show_mask_proba_compare_to_real(ds: planktonds.PlanktonDataset, idx, real_dataset, image_name="proba_compared_real.png"):
+def show_predicted_mask_proba_vs_real_mask_binary(ds: planktonds.PlanktonDataset, idx, real_dataset, image_name="proba_compared_real.png"):
     """
     Compare the predicted probability heatmap with the real mask for an image.
     Args:

@@ -143,6 +143,7 @@ def test(config):
     logging.info("= Dataset")
     dataset_test = data.PlanktonDataset(
         config['data']['trainpath'],config['data']['patch_size'],mode='test')
+    #dataset_teset = config .. trainpath ??
     dataset_train = data.PlanktonDataset(
         config['data']['trainpath'],config['data']['patch_size'])
     input_size = tuple(dataset_train[0][0].shape)
@@ -171,10 +172,11 @@ def test(config):
     print(dataset_test.mask_files[0][0])
 
     logging.info("= Reconstruct image")
+    #dataset_test = alors qu'on veut comparer mask réel et image ??
     data.show_image_mask_from(dataset_test,0,"image_reconstruct_1.png")
 
     logging.info("= Compare masks")
-    data.show_mask_predict_compare_to_real(dataset_test,0,dataset_train,"compare_mask_1.png")
+    #data.show_mask_predict_compare_to_real(dataset_test,0,dataset_train,"compare_mask_1.png")
 
 
 
@@ -205,22 +207,25 @@ def test_proba(config):
     model.eval()
 
 
-    # Seconde partie de test_with_proba: Utiliser les probabilités pour comparer avec les masques réels
+    # Seconde partie de test_with_proba: mask de proba prédit vs le mask binaire réel
+    # or seul dataset_train à des masks binaire réels.
     logging.info("= Predict probabilities and compare to real masks")
-    dataset_test_proba = data.PlanktonDataset(  # Copie dédiée aux probabilités
-        config['data']['testpath'], config['data']['patch_size'], mode='test'
+    dataset_train_proba = data.PlanktonDataset(  # Copie dédiée aux probabilités
+        config['data']['trainpath'], config['data']['patch_size'],
+        mode='test'  # autorise dataset_train_proba.insert(...)
+
     )
-    for idx_img in range(dataset_test.image_patches[0][0] * dataset_test.image_patches[0][1]):
+    for idx_img in range(dataset_train.image_patches[0][0] * dataset_train.image_patches[0][1]):
         if idx_img % 400 == 0:
             logging.info(f"  - Predicting probabilities for mask {idx_img}")
-        image = dataset_test[idx_img].unsqueeze(0).to(device)
+        image = dataset_train[idx_img][0].unsqueeze(0).to(device)
 
         # Récupérer les probabilités
-        probs = model.predict_probs(image)
-        dataset_test_proba.insert(probs)  # Stocke uniquement les probabilités dans ce dataset
+        probs = model.predict_probs(image).half()
+        dataset_train_proba.insert(probs)  # Stocke uniquement les probabilités dans ce dataset
 
-    # Visualiser les probabilités comparées aux masques réels
-    data.show_mask_proba_compare_to_real(dataset_test_proba, 0, dataset_train, "proba_compared_real_1.png")
+    # Visualiser le mask de proba prédit vs le mask binaire réel
+    data.show_predicted_mask_proba_vs_real_mask_binary(dataset_train_proba, 0, dataset_train, "proba_compared_real_1.png")
 
 
 def sub(config):
@@ -243,12 +248,17 @@ def sub(config):
     model.load_state_dict(torch.load(model_name))
     model.eval()
 
-    logging.info("= Predict masks")
-    for idx_img in range(len(dataset_test)):
-        if idx_img % 400 == 0:
-            logging.info(f"  - predict mask {idx_img}")
-        image = dataset_test[idx_img].unsqueeze(0).to(device)
-        dataset_test.insert(model.predict(image))
+    logging.info("= Predict masks for all test images")
+    for image_idx, (num_patches_x, num_patches_y) in enumerate(dataset_test.image_patches):
+        logging.info(f"Predicting patches for image {image_idx}")
+        for idx_patch in range(num_patches_x * num_patches_y):
+            global_idx = idx_patch + sum(
+                x * y for x, y in dataset_test.image_patches[:image_idx]
+            )  # Calcul de l'index global
+            #logging.info(f"  - predict mask {global_idx} (patch {idx_patch} in image {image_idx})")
+            image = dataset_test[global_idx].unsqueeze(0).to(device)
+            dataset_test.insert(model.predict(image))
+
 
     logging.info("= To submit")
     dataset_test.to_submission()

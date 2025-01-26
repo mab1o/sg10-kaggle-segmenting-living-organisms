@@ -5,6 +5,7 @@ import os
 import numpy as np
 import torch
 from torch.utils.data import Dataset
+from torchvision.io import read_image
 
 # Local imports
 from . import patch
@@ -157,45 +158,58 @@ class PlanktonDataset(Dataset):
     def reconstruct_mask(self, idx, binary=True):
         """
         Reconstruct the full mask for a given image.
+
         Args:
-            image_id (int): ID of the image.
+            idx (int): ID of the image.
+            binary (bool): If True, place patch data directly as binary (0/1). 
+                        If False, handle possible shape/transpose issues (e.g. for probability maps).
+
         Returns:
             torch.Tensor: Reconstructed mask.
         """
         start_idx = sum(x * y for x, y in self.image_patches[:idx])
         end_idx = start_idx + self.image_patches[idx][0] * self.image_patches[idx][1]
-        patches = [self[i][1] if self.mode == 'train' else self.mask_files[i] for i in range(start_idx, end_idx)]
 
-        width, height = self.images_size[idx]
+        patches = [self[i][1] if self.mode == 'train' else self.mask_files[i] 
+                for i in range(start_idx, end_idx)]
+
+        width, height = self.images_size[idx]        
         patch_width, patch_height = self.patch_size
         num_patches_width, num_patches_height = self.image_patches[idx]
-        reconstruct_mask = torch.zeros((height,width), dtype=patches[0].dtype)
-        
+        reconstruct_mask = torch.zeros((height, width), dtype=patches[0].dtype)
+
         patch_index = 0
         for x in range(num_patches_height):
             for y in range(num_patches_width):
-
                 patch = patches[patch_index]
 
                 x_start = x * patch_height
                 y_start = y * patch_width
                 x_end = min((x + 1) * patch_height, height)
                 y_end = min((y + 1) * patch_width, width)
-                # Calculate start indices for the patch slice
-                patch_x_start = max(0, (x + 1) * patch_height - x_end)
-                patch_y_start = max(0, (y + 1) * patch_width - y_end)
+
+                patch_x_start = ((x + 1) * patch_height) - x_end
+                patch_y_start = ((y + 1) * patch_width) - y_end
 
                 if binary:
-                    reconstruct_mask[x_start:x_end,y_start:y_end] = patch[patch_x_start:,patch_y_start:]
+                    # Direct assignment if we're sure it's 0/1 data
+                    reconstruct_mask[x_start:x_end, y_start:y_end] = patch[patch_x_start:, patch_y_start:]
                 else:
-                    # Transpose patch dimensions if necessary
-                    if patch.dim() == 4:  # For shape [1, C, H, W]
-                        patch = patch.squeeze(0).squeeze(0)  # Remove redundant dims
+                    # Handle possible 4D shape or mismatch
+                    if patch.dim() == 4:  # e.g. (1, C, H, W)
+                        patch = patch.squeeze(0).squeeze(0)  # remove extra dims
+
                     if patch.shape != reconstruct_mask[x_start:x_end, y_start:y_end].shape:
-                        patch = patch.T  # Transpose if mismatched
+                        # If shapes still mismatch, transpose the patch
+                        patch = patch.T
+
                     reconstruct_mask[x_start:x_end, y_start:y_end] = patch[patch_x_start:, patch_y_start:]
 
+                patch_index += 1
+
         return reconstruct_mask
+
+
 
     def __repr__(self):
         return f"PlanktonDataset(mode={self.mode},"\
