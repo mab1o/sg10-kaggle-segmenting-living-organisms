@@ -5,6 +5,7 @@ import random
 # External imports
 import torch
 import torch.utils.data
+import albumentations as A
 
 # Local imports
 from . import planktonds
@@ -30,12 +31,14 @@ def get_dataloaders(data_config, use_cuda):
     batch_size = data_config["batch_size"]
     num_workers = data_config["num_workers"]
     quick_test = data_config["quick_test"]
-    logging.info("  - Dataset creation (PlanktonDataset)")
 
+    logging.info("  - Dataset creation (PlanktonDataset)")
+    transform = [A.VerticalFlip(p=1), A.HorizontalFlip(p=1)]
     base_dataset = planktonds.PlanktonDataset(
         image_mask_dir=data_config['trainpath'],
         patch_size=data_config["patch_size"],
-        mode="train"
+        mode="train",
+        transform=transform
     )
 
     logging.info(f"  - I loaded {len(base_dataset)} samples")
@@ -59,8 +62,8 @@ def get_dataloaders(data_config, use_cuda):
 
 
     # Attribuer un poids inversement proportionnel à la classe
-    #weights = [1 / num_negatives if label == 0 else 1 / num_positives for label in labels]
-    #sampler = WeightedRandomSampler(weights, len(weights))
+    # weights = [1 / num_negatives if label == 0 else 1 / num_positives for label in labels]
+    # sampler = WeightedRandomSampler(weights, len(weights))
 
 
     # Build the dataloaders
