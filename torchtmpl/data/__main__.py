@@ -5,6 +5,7 @@ import sys
 # External imports
 import yaml
 import numpy as np
+import albumentations as A
 
 # Local imports
 from . import patch
@@ -62,6 +63,40 @@ def test_PlanktonDataset_train(config):
     visualization._show_image_mask_given(img, mask, "test_planktondataset_train")
 
     logging.info("=== End of Test: PlanktonDataset (Train) ===")
+
+def test_augmented_data(config):
+    """Test PlanktonDataset for training."""
+    logging.info("\n=== Test: Augmented Data ===")
+
+    dir_path = config['data']['trainpath']
+    transform = [A.VerticalFlip(p=1), A.HorizontalFlip(p=1)]
+
+    dataset = planktonds.PlanktonDataset(dir_path, patch_size=(1024, 1024),transform=transform)
+    logging.info(f"Dataset size: {len(dataset)}")
+    logging.info(f"Patch size: {dataset.patch_size}")
+    logging.info(f"Image files: {len(dataset.image_files)}")
+    logging.info(f"Mask files: {len(dataset.mask_files)}")
+    
+    nb = dataset.total_patches
+
+    logging.info("Displaying the original image flip verticaly...")
+    img_v, mask_v = dataset[nb*2-1]
+    img_v = img_v.squeeze(0)
+    logging.info(f"  - mask and img are: {type(mask_v)} and {type(img_v)}")
+    visualization._show_image_mask_given(img_v,mask_v, f"test_augmented_data_flip_verticaly")
+    
+    logging.info("Displaying the original image flip horizontaly ...")
+    img_h, mask_h = dataset[nb*3-1]
+    img_h = img_h.squeeze(0)
+    logging.info(f"  - mask and img are: {type(mask_h)} and {type(img_h)}")
+    visualization._show_image_mask_given(img_h,mask_h, f"test_augmented_data_flip_horizontaly")
+
+    logging.info("Displaying the original image...")
+    img_o, mask_o = dataset[nb-1]
+    img_o = img_o.squeeze(0)
+    logging.info(f"  - mask and img are: {type(mask_o)} and {type(img_o)}")
+    visualization._show_image_mask_given(img_o, mask_o, "test_augmented_data_original")
+    logging.info("=== End of Test: Augmented Data ===")
 
 def test_encoder():
     logging.info("\n=== Test: Encoder ===")
@@ -189,8 +224,9 @@ if __name__ == "__main__":
     # test_patch(config)
     # test_PlanktonDataset_train(config)
     # test_reconstruct_image(config)
-    # test_dataloader(config)
+    test_dataloader(config)
     # test_size_plankton(config)
     # test_encoder()
-    test_generate_csv_file(config)
-    test_PlanktonDataset_test(config)
+    # test_generate_csv_file(config)
+    # test_PlanktonDataset_test(config)
+    # test_augmented_data(config)
