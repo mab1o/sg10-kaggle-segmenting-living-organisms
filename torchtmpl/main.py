@@ -19,25 +19,25 @@ from . import optim
 from . import utils
 from . import losses
 
-#os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "expandable_segments:True,max_split_size_mb:128"
+if torch.cuda.is_available():
+    os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "expandable_segments:True"
 
 def train(config):
     use_cuda = torch.cuda.is_available()
     device = torch.device("cuda") if use_cuda else torch.device("cpu")
 
+    # Initialisation de wandb si activé
     if "wandb" in config["logging"]:
         wandb_config = config["logging"]["wandb"]
         wandb.init(project=wandb_config["project"], entity=wandb_config["entity"])
-        wandb_log = wandb.log
-        wandb_log(config)
         logging.info(f"Will be recording in wandb run name : {wandb.run.name}")
+        wandb_log = wandb.log
     else:
         wandb_log = None
 
     # Build the dataloaders
     logging.info("= Building the dataloaders")
     data_config = config["data"]
-
     train_loader, valid_loader, input_size, num_classes = data.get_dataloaders(
         data_config, use_cuda
     )
@@ -50,66 +50,71 @@ def train(config):
 
     # Build the loss
     logging.info("= Loss")
-    if config["loss"]["name"] == "BCEWithLogitsLoss":
-        pos_weight = torch.tensor([config["loss"].get("pos_weight", 1.0)], device=device)
+    loss_config = config["loss"]
+    if loss_config["name"] == "BCEWithLogitsLoss":
+        pos_weight = torch.tensor([loss_config.get("pos_weight", 1.0)], device=device)
         loss = torch.nn.BCEWithLogitsLoss(pos_weight=pos_weight)
-    elif config["loss"]["name"] == "TverskyLoss":
-        alpha = config["loss"].get("alpha", 0.3)
-        beta = config["loss"].get("beta", 0.7)
-        loss = losses.TverskyLoss(alpha=alpha, beta=beta)
-        print("Using TverskyLoss with alpha =", alpha, "and beta =", beta)
+    elif loss_config["name"] == "TverskyLoss":
+        loss = losses.TverskyLoss(alpha=loss_config.get("alpha", 0.3), beta=loss_config.get("beta", 0.7))
+        print(f"Using TverskyLoss with alpha={loss_config['alpha']} and beta={loss_config['beta']}")
+    elif loss_config["name"] == "FocalTverskyLoss":
+        loss = losses.FocalTverskyLoss(
+            alpha=loss_config.get("alpha", 0.3),
+            beta=loss_config.get("beta", 0.7),
+            gamma=loss_config.get("gamma", 1.1)
+        )
+        print(f"Using FocalTverskyLoss with alpha={loss_config['alpha']}, beta={loss_config['beta']}, and gamma={loss_config['gamma']}")
     else:
-        loss = optim.get_loss(config["loss"]["name"])
+        loss = optim.get_loss(loss_config["name"])
 
     # Build the optimizer
     logging.info("= Optimizer")
-    optim_config = config["optim"]
-    optimizer = optim.get_optimizer(optim_config, model.parameters())
+    optimizer = optim.get_optimizer(config["optim"], model.parameters())
 
-    # Build the callbacks
-    logging_config = config["logging"]
-    # Let us use as base logname the class name of the model
-    logname = model_config["class"]
-    logdir = utils.generate_unique_logpath(logging_config["logdir"], logname)
-    if not os.path.isdir(logdir):
-        os.makedirs(logdir)
+    # Build the logging directory
+    logdir = pathlib.Path(utils.generate_unique_logpath(config["logging"]["logdir"], model_config["class"]))
+    logdir.mkdir(parents=True, exist_ok=True)
     logging.info(f"Will be logging into {logdir}")
 
-    # Copy the config file into the logdir
-    logdir = pathlib.Path(logdir)
-    with open(logdir / "config.yaml", "w") as file:
+    # Sauvegarde locale du fichier config.yaml
+    config_path = logdir / "config.yaml"
+    with open(config_path, "w") as file:
         yaml.dump(config, file)
+
+    # Ajout du config.yaml en tant qu'Artifact dans WandB (uniquement si wandb est activé)
+    if wandb_log is not None:
+        artifact = wandb.Artifact("config", type="config")
+        artifact.add_file(str(config_path))
+        wandb.log_artifact(artifact)
 
     # Make a summary script of the experiment
     logging.info("= Summary")
-    input_size = next(iter(train_loader))[0].shape # take too mush time
     summary_text = (
         f"Logdir : {logdir}\n"
-        + "## Command \n"
-        + " ".join(sys.argv)
-        + "\n\n"
+        + "## Command \n" + " ".join(sys.argv) + "\n\n"
         + f" Config : {config} \n\n"
-        + (f" Wandb run name : {wandb.run.name}\n\n" if wandb_log is not None else "")
+        + (f" Wandb run name : {wandb.run.name}\n\n" if wandb_log else "")
         + "## Summary of the model architecture\n"
-        + f"{torchinfo.summary(model, input_size=input_size)}\n\n"
-        + "## Loss\n\n"
-        + f"{loss}\n\n"
+        + f"{torchinfo.summary(model, input_size=next(iter(train_loader))[0].shape)}\n\n"
+        + "## Loss\n\n" + f"{loss}\n\n"
         + "## Datasets : \n"
         + f"Train : {train_loader.dataset.dataset}\n"
         + f"Validation : {valid_loader.dataset.dataset}"
     )
+    
+    # Écriture du résumé de l'expérience
     with open(logdir / "summary.txt", "w") as f:
         f.write(summary_text)
-    #logging.info(summary_text)
+
     if wandb_log is not None:
         wandb.log({"summary": summary_text})
 
-    # Define the early stopping callback
+    # Initialisation du checkpointing
     model_checkpoint = utils.ModelCheckpoint(
         model, str(logdir / "best_model.pt"), min_is_best=False
     )
     
-    logging.info(f"= Start training")
+    logging.info("= Start training")
     for e in range(config["nepochs"]):
         # Train 1 epoch
         train_loss = utils.train(model, train_loader, loss, optimizer, device)
@@ -117,7 +122,7 @@ def train(config):
         # Test
         test_loss, test_f1 = utils.test(model, valid_loader, loss, device)
 
-        # Utiliser le F1-score pour évaluer le modèle
+        # Mise à jour du checkpoint si meilleur F1-score
         updated = model_checkpoint.update(test_f1)
         logging.info(
             "[%d/%d] Test loss : %.4f, Test F1-score : %.4f %s"
@@ -130,11 +135,11 @@ def train(config):
             )
         )
 
-        # Update the dashboard
-        metrics = {"train_CE": train_loss, "test_CE": test_loss, "test_F1": test_f1}
+        # Log dans wandb
         if wandb_log is not None:
             logging.info("Logging on wandb")
-            wandb_log(metrics)
+            wandb_log({"train_CE": train_loss, "test_CE": test_loss, "test_F1": test_f1})
+
 
 
 

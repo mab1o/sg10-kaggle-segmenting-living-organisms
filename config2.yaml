@@ -2,30 +2,31 @@ data:
   root_dir:  '/mounts/Datasets3/2024-2025-ChallengePlankton/'
   trainpath: '/mounts/Datasets3/2024-2025-ChallengePlankton/train/'
   testpath: '/mounts/Datasets3/2024-2025-ChallengePlankton/test/'
-  batch_size: 64
-  num_workers: 6
-  valid_ratio: 0.1 #changed from 0.2 to 0.1 because the dataset is quite large
+  batch_size: 48
+  num_workers: 8
+  valid_ratio: 0.15 #changed from 0.2 to 0.1 because the dataset is quite large
   patch_size: [300,300]
   quick_test: false
 optim:
   algo: AdamW
   params:
-    lr: 0.0005
-    weight_decay: 0.0001
+    lr: 0.001
+    weight_decay: 0.01
 scheduler:
-  class: CosineAnnealingLR
+  class: CosineAnnealingWarmRestarts  # Switched to WarmRestarts for dynamic adaptation
   params:
-    T_max: 4  # Nombre d'époques pour un cycle
-    eta_min: 1e-6
+    T_0: 4  # Restart every 4 epochs for better exploration
+    T_mult: 1  # Consistent restarts
+    eta_min: 1e-6  # Maintain a very small LR at decay phases
 
-nepochs: 4
+nepochs: 12
 # loss: "CrossEntropyLoss", "BCEWithLogitsLoss"
 #pos_weight: 19.63  # Calculé comme (num_negatives / num_positives) avec environ 5% de positif. Put at 1 to desactivate
 pos_weight: 1 #reduced the value to avoid instability
 loss: 
   name: "TverskyLoss"
-  alpha: 0.5
-  beta: 0.5
+  alpha: 0.4
+  beta: 0.6
 # standard is alpha=0.3, beta=0.7
 logging:
   wandb: 

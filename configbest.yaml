@@ -1,0 +1,47 @@
+# YOAT GOAT Edition
+data:
+  root_dir: '/mounts/Datasets3/2024-2025-ChallengePlankton/'
+  trainpath: '/mounts/Datasets3/2024-2025-ChallengePlankton/train/'
+  testpath: '/mounts/Datasets3/2024-2025-ChallengePlankton/test/'
+  batch_size: 16  # 
+  num_workers: 8
+  valid_ratio: 0.25
+  patch_size: [512, 512]  #
+  quick_test: false
+
+optim:
+  algo: AdamW
+  params:
+    lr: 0.001  #
+    weight_decay: 0.0005  #
+
+scheduler:
+  class: CosineAnnealingLR
+  params:
+    T_max: 10  # 
+    eta_min: 1e-6
+    lr_factor: 0.8  #
+
+nepochs: 10
+pos_weight: 1
+
+loss:
+  name: "TverskyLoss"
+  alpha: 0.2
+  beta: 0.8
+
+logging:
+  wandb:
+    project: "ChallengePlankton"
+    entity: "Random_Predictions_2"
+  logdir: "./logs"
+
+model:
+  class: UNet
+  encoder:
+    model_name: resnet34
+
+test:
+  model_path: 'logs/UNet_56/'
+  model_name: 'best_model.pt'
+  model_config: 'config.yaml'

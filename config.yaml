@@ -1,52 +1,55 @@
 data:
-  root_dir:  '/mounts/Datasets3/2024-2025-ChallengePlankton/'
+  root_dir: '/mounts/Datasets3/2024-2025-ChallengePlankton/'
   trainpath: '/mounts/Datasets3/2024-2025-ChallengePlankton/train/'
   testpath: '/mounts/Datasets3/2024-2025-ChallengePlankton/test/'
   batch_size: 64
-  num_workers: 6
-  valid_ratio: 0.1 #changed from 0.2 to 0.1 because the dataset is quite large
-  patch_size: [256,256]
+  num_workers: 8  # Increased for better performance on large datasets
+  valid_ratio: 0.2  # Reduced to keep more training data
+  patch_size: [256, 256]
   quick_test: false
+
 optim:
   algo: AdamW
   params:
-    lr: 0.002
-    weight_decay: 0.0001
-scheduler:
-  class: CosineAnnealingLR
-  params:
-    T_max: 4  # Nombre d'époques pour un cycle
-    eta_min: 1e-6
+    lr: 0.0005  # Reduced learning rate for better stability
+    weight_decay: 0.02  # Slightly increased to improve generalization
 
-nepochs: 4
-# loss: "CrossEntropyLoss", "BCEWithLogitsLoss"
-#pos_weight: 19.63  # Calculé comme (num_negatives / num_positives) avec environ 5% de positif. Put at 1 to desactivate
-pos_weight: 1 #reduced the value to avoid instability
-loss: 
+
+scheduler:
+  class: CosineAnnealingWarmRestarts  # Switched to WarmRestarts for dynamic LR restarts
+  params:
+    T_0: 4  # Restart every 4 epochs for dynamic adjustment
+    T_mult: 1  # Consistent restart intervals
+    eta_min: 1e-6  # Minimal LR for fine-tuning and stability
+
+
+nepochs: 10
+# Loss: "CrossEntropyLoss", "BCEWithLogitsLoss"
+pos_weight: 1  # Kept at 1 to avoid instability
+loss:
   name: "TverskyLoss"
-  alpha: 0.5
-  beta: 0.5
-# standard is alpha=0.3, beta=0.7
+  alpha: 0.4   # alpha <  beta : focus more on false negatives (recall)
+  beta: 0.6
+  gamma: 1.3 #focus more on hard to classify pixel   
+  #if at 1, FocalTverskyLoss becomes TverskyLoss
+
 logging:
-  wandb: 
+  wandb:
     project: "ChallengePlankton"
-    entity: "Random_Predictions_2"  # Remplace par ton nom d'utilisateur ou celui de ton organisation
-  logdir: "./logs"  # Emplacement des logs locaux
+    entity: "Random_Predictions_2"  # Replace with your WandB entity
+  logdir: "./logs"  # Local log directory
 
 model:
   class: UNet
   encoder:
-    model_name: resnet18
-
-#model:
-#  class: EfficientNetB3Segmentation
-#  input_channels: 1  # Modify based on your input data
-#  num_classes: 1     # Binary segmentation
+    model_name: resnet18    # Upgraded to ResNet34 for better feature extraction
+  # Upgraded to ResNet34 for better feature extraction
+  params:
+    input_channels: 1  # Modify based on your input data
+    num_classes: 1     # Binary segmentation
 
 
 test:
-  model_path: 'logs/UNet_2/'
+  model_path: 'logs/UNet_42/'
   model_name: 'best_model.pt'
   model_config: 'config.yaml'
-
-

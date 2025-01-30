@@ -101,6 +101,12 @@ def train(model, loader, f_loss, optimizer, device, dynamic_display=True):
 
         # Backward pass et optimisation
         scaler.scale(loss).backward()
+
+        # Clipping des gradients pour éviter les explosions de gradients
+        scaler.unscale_(optimizer)  # Nécessaire avant clip_grad_norm_ avec AMP
+        torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=5.0)
+
+
         scaler.step(optimizer)
         scaler.update()
 
@@ -149,7 +155,7 @@ def test(model, loader, f_loss, device):
     total_f1 = 0
     num_batches = 0
 
-    with torch.no_grad():
+    with torch.inference_mode():
         for (inputs, targets) in loader:
             inputs, targets = inputs.to(device), targets.to(device)
 
