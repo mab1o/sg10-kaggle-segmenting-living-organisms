@@ -12,20 +12,21 @@ from . import patch
 from . import submission
 
 class PlanktonDataset(Dataset):
-    def __init__(self, image_mask_dir, patch_size, mode = "train", transform = None):
+    def __init__(self, image_mask_dir, patch_size, mode="train", transform=None, apply_transform=True):
         """
         Args:
             image_mask_dir (str): Path to the directory containing images and masks.
             patch_size (tuple): Size of the square patch to extract (width, height).
             mode (str): Either 'train' or 'test'.
-            transform (list(transformation)): list of transformation to augmented data
+            transform (list): List of transformations.
+            apply_transform (bool): If True, apply transformations (used for train only).
         """
         assert mode in ["train", "test"], "Mode must be either 'train' or 'test'"
-        assert patch_size[0] > 0 and patch_size[1] > 0 , "Patch size must be greater than 0."
+        assert patch_size[0] > 0 and patch_size[1] > 0, "Patch size must be greater than 0."
 
         self.mode = mode
         self.transform = transform
-        self.categories = ['non living','living']
+        self.apply_transform = apply_transform  # Nouveau paramètre pour désactiver les transformations sur valid
         self.image_mask_dir = image_mask_dir
         self.patch_size = patch_size
         self.image_files = sorted([f for f in os.listdir(image_mask_dir) if f.endswith('_scan.png.ppm')])
@@ -33,26 +34,22 @@ class PlanktonDataset(Dataset):
         if mode == 'train':
             self.mask_files = sorted([f for f in os.listdir(image_mask_dir) if f.endswith('_mask.png.ppm')])
             assert len(self.image_files) == len(self.mask_files), "Mismatch between image and mask files"
-        else :
+        else:
             self.mask_files = []
-            self.transform = None
         
         # Precompute patch information
         self.image_patches = []
-        self.images_size   = []
+        self.images_size = []
         for image_file in self.image_files:
             image_path = os.path.join(self.image_mask_dir, image_file)
             width, height = patch.extract_ppm_size(image_path)
-            self.images_size.append((width,height))
+            self.images_size.append((width, height))
             self.image_patches.append(self._calculate_num_patches(width, height))
 
-        # Calculate total item in the dataset
         self.total_patches = sum(x * y for x, y in self.image_patches)
-        if self.transform == None:
-            self.total_items = self.total_patches
-        else:
-            self.total_items = self.total_patches * (len(self.transform) + 1)
 
+
+            
     def _calculate_num_patches(self, width, height):
         """
         Calculate the number of patches in each dimension for a given image size.
@@ -68,20 +65,12 @@ class PlanktonDataset(Dataset):
         return num_patches_x, num_patches_y
 
     def __len__(self):
-        return self.total_items
+        return self.total_patches
 
     def __getitem__(self, idx):
         assert idx < len(self), f"Index out of range: {idx}"
 
-        # Determine original patch and transformation
-        transform_idx = idx // self.total_patches
-        idx = idx % self.total_patches
-        if transform_idx == 0:
-            transform = None
-        else:
-            transform = self.transform[ transform_idx -1 ]
-
-        # Determine the image and patch indices
+        # Identifier le patch image
         current_idx = idx
         for image_idx, (num_patches_x, num_patches_y) in enumerate(self.image_patches):
             num_patches = num_patches_x * num_patches_y
@@ -92,16 +81,17 @@ class PlanktonDataset(Dataset):
         image_row, image_column = self._find_row_column(image_idx, current_idx)
         image_path = os.path.join(self.image_mask_dir, self.image_files[image_idx])
         image_patch = patch.extract_patch_from_ppm(image_path, image_row, image_column, self.patch_size)
-        
-        if (self.mode == 'test'):
-            image_patch = torch.from_numpy(image_patch).unsqueeze(0).float()
-            return image_patch
+
+        if self.mode == 'test':
+            return torch.from_numpy(image_patch).unsqueeze(0).float()
 
         mask_patch = self._get_mask_patch(image_idx, image_row, image_column)
-        if transform != None:
-            augmented   = transform(image=image_patch, mask=mask_patch)
-            image_patch = augmented["image"]
-            mask_patch  = augmented["mask"]
+
+        # Appliquer la transformation uniquement si `apply_transform` est True
+        if self.apply_transform and self.transform:
+            augmented = self.transform(image=image_patch, mask=mask_patch)
+            image_patch, mask_patch = augmented["image"], augmented["mask"]
+
         image_patch = torch.from_numpy(image_patch).unsqueeze(0).float()
         mask_patch = torch.from_numpy(mask_patch).float()
 

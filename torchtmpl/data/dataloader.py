@@ -33,19 +33,34 @@ def get_dataloaders(data_config, use_cuda):
     quick_test = data_config["quick_test"]
 
     logging.info("  - Dataset creation (PlanktonDataset)")
-    transform = [A.VerticalFlip(p=1), A.HorizontalFlip(p=1)]
-    base_dataset = planktonds.PlanktonDataset(
+
+    # Définir les transformations pour l'entraînement
+    train_transform = A.Compose([
+        A.VerticalFlip(p=0.5),
+        A.HorizontalFlip(p=0.5),
+        A.Affine(scale=(0.9, 1.1), translate_percent=(0.05, 0.05), rotate=(-10, 10), p=0.5),  # Remplace RandomRotate90
+        A.RandomBrightnessContrast(brightness_limit=0.1, contrast_limit=0.1, p=0.4),
+        A.GaussNoise(p=0.3),
+        A.GaussianBlur(blur_limit=(1, 3), p=0.1),  # Réduit l'impact
+        A.ElasticTransform(alpha=1, sigma=50, alpha_affine=50, p=0.2)  # Gardé pour la variabilité des formes
+    ], additional_targets={"mask": "mask"})
+
+    # Charger une seule fois le dataset complet
+    full_dataset = planktonds.PlanktonDataset(
         image_mask_dir=data_config['trainpath'],
         patch_size=data_config["patch_size"],
         mode="train",
-        transform=transform
+        transform=train_transform,  # On met quand même la transformation, mais activée que pour train
+        apply_transform=False  # On désactive par défaut car on va 
+        #l'activer apres seulement pour le train_dataset
     )
 
-    logging.info(f"  - I loaded {len(base_dataset)} samples")
+    logging.info(f"  - I loaded {len(full_dataset)} samples")
 
-    indices = list(range(len(base_dataset)))
+    # Séparer les indices train/validation
+    indices = list(range(len(full_dataset)))
     random.shuffle(indices)
-    num_valid = int(valid_ratio * len(base_dataset))
+    num_valid = int(valid_ratio * len(full_dataset))
 
 
     if quick_test:  # Mode test rapide
@@ -56,22 +71,20 @@ def get_dataloaders(data_config, use_cuda):
         train_indices = indices[num_valid:]
         valid_indices = indices[:num_valid]
 
+    # Créer les subsets
+    train_dataset = torch.utils.data.Subset(full_dataset, train_indices)
+    valid_dataset = torch.utils.data.Subset(full_dataset, valid_indices)
 
-    train_dataset = torch.utils.data.Subset(base_dataset, train_indices)
-    valid_dataset = torch.utils.data.Subset(base_dataset, valid_indices)
+    # Activer les transformations seulement pour train
+    train_dataset.dataset.apply_transform = True  # Activer uniquement pour l'entraînement
+    #valid dataset reste false.
 
 
-    # Attribuer un poids inversement proportionnel à la classe
-    # weights = [1 / num_negatives if label == 0 else 1 / num_positives for label in labels]
-    # sampler = WeightedRandomSampler(weights, len(weights))
-
-
-    # Build the dataloaders
+    # Créer les dataloaders
     train_loader = torch.utils.data.DataLoader(
         train_dataset,
-        #sampler = sampler,
         batch_size=batch_size,
-        shuffle=True,
+        shuffle=True, 
         num_workers=num_workers,
         pin_memory=use_cuda,
     )
@@ -85,7 +98,7 @@ def get_dataloaders(data_config, use_cuda):
     )
 
     num_classes = 1
-    input_size = tuple(base_dataset[0][0].shape)
-        
-    logging.info(f"  - Input size is {input_size} and the number of classe is {num_classes}.")
+    input_size = tuple(full_dataset[0][0].shape)
+
+    logging.info(f"  - Input size is {input_size} and the number of classes is {num_classes}.")
     return train_loader, valid_loader, input_size, num_classes

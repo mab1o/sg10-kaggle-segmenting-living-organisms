@@ -11,6 +11,7 @@ def makejob(commit_id, configpath, nruns):
 
 #SBATCH --job-name=templatecode
 #SBATCH --nodes=1
+#SBATCH --exclude=sh00,sh[10-19]
 #SBATCH --partition=gpu_prod_long
 #SBATCH --time=2:00:00
 #SBATCH --output=logslurms/slurm-%A_%a.out

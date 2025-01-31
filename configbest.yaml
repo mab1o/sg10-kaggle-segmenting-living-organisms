@@ -3,10 +3,10 @@ data:
   root_dir: '/mounts/Datasets3/2024-2025-ChallengePlankton/'
   trainpath: '/mounts/Datasets3/2024-2025-ChallengePlankton/train/'
   testpath: '/mounts/Datasets3/2024-2025-ChallengePlankton/test/'
-  batch_size: 16  # 
+  batch_size: 32  # 
   num_workers: 8
-  valid_ratio: 0.25
-  patch_size: [512, 512]  #
+  valid_ratio: 0.1
+  patch_size: [256, 256]  #
   quick_test: false
 
 optim:
@@ -27,8 +27,8 @@ pos_weight: 1
 
 loss:
   name: "TverskyLoss"
-  alpha: 0.2
-  beta: 0.8
+  alpha: 0.5
+  beta: 0.5
 
 logging:
   wandb:
@@ -39,9 +39,9 @@ logging:
 model:
   class: UNet
   encoder:
-    model_name: resnet34
+    model_name: resnet18
 
 test:
-  model_path: 'logs/UNet_56/'
+  model_path: 'logs/UNet_62/'
   model_name: 'best_model.pt'
   model_config: 'config.yaml'
