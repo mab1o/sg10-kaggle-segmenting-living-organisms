@@ -69,33 +69,24 @@ def test_augmented_data(config):
     logging.info("\n=== Test: Augmented Data ===")
 
     dir_path = config['data']['trainpath']
-    transform = [A.VerticalFlip(p=1), A.HorizontalFlip(p=1)]
+    logging.info("  - tranfrom = True")
+    transform = A.Compose([A.VerticalFlip(p=0.3), A.HorizontalFlip(p=0.3),A.GaussianBlur(p=0.01) ])
 
     dataset = planktonds.PlanktonDataset(dir_path, patch_size=(1024, 1024),transform=transform)
     logging.info(f"Dataset size: {len(dataset)}")
     logging.info(f"Patch size: {dataset.patch_size}")
     logging.info(f"Image files: {len(dataset.image_files)}")
     logging.info(f"Mask files: {len(dataset.mask_files)}")
-    
-    nb = dataset.total_patches
-
-    logging.info("Displaying the original image flip verticaly...")
-    img_v, mask_v = dataset[nb*2-1]
-    img_v = img_v.squeeze(0)
-    logging.info(f"  - mask and img are: {type(mask_v)} and {type(img_v)}")
-    visualization._show_image_mask_given(img_v,mask_v, f"test_augmented_data_flip_verticaly")
-    
-    logging.info("Displaying the original image flip horizontaly ...")
-    img_h, mask_h = dataset[nb*3-1]
-    img_h = img_h.squeeze(0)
-    logging.info(f"  - mask and img are: {type(mask_h)} and {type(img_h)}")
-    visualization._show_image_mask_given(img_h,mask_h, f"test_augmented_data_flip_horizontaly")
 
     logging.info("Displaying the original image...")
-    img_o, mask_o = dataset[nb-1]
-    img_o = img_o.squeeze(0)
-    logging.info(f"  - mask and img are: {type(mask_o)} and {type(img_o)}")
-    visualization._show_image_mask_given(img_o, mask_o, "test_augmented_data_original")
+    img = patch.extract_patch_from_ppm(
+        dir_path + dataset.image_files[1], 0, 0, dataset.images_size[1])
+    mask = patch.extract_patch_from_ppm(
+        dir_path + dataset.mask_files[1], 0, 0, dataset.images_size[1])
+    visualization._show_image_mask_given(img, mask, "test_reconstruct_original_image_1")
+
+    logging.info("Displaying the augmented image... (expect ugly reconstruct)")
+    visualization.show_image_mask_from(dataset,1, "test_augmented_data")
     logging.info("=== End of Test: Augmented Data ===")
 
 def test_encoder():
@@ -160,9 +151,11 @@ def test_PlanktonDataset_test(config):
     logging.info("\n=== Test: PlanktonDataset (Test) ===")
 
     logging.info("Charge Data train")
+    logging.info("  - tranfrom = True")
+    transform = A.Compose([A.VerticalFlip(p=0.3), A.HorizontalFlip(p=0.3),A.GaussianBlur(p=0.01) ])
     dir_path = config['data']['trainpath']
     patch_size = (1000,1000)
-    ds_train = planktonds.PlanktonDataset(dir_path,patch_size)
+    ds_train = planktonds.PlanktonDataset(dir_path,patch_size, transform=transform)
 
     logging.info("Charge Data test")
     ds_test = planktonds.PlanktonDataset(dir_path,patch_size, mode='test')
@@ -229,4 +222,4 @@ if __name__ == "__main__":
     # test_encoder()
     # test_generate_csv_file(config)
     # test_PlanktonDataset_test(config)
-    # test_augmented_data(config)
+    test_augmented_data(config)
