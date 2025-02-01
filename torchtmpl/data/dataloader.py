@@ -33,18 +33,38 @@ def get_dataloaders(data_config, use_cuda):
     quick_test = data_config["quick_test"]
 
     logging.info("  - Dataset creation (PlanktonDataset)")
-
+    """
     # Définir les transformations pour l'entraînement
     train_transform = A.Compose([
         A.VerticalFlip(p=0.5),
         A.HorizontalFlip(p=0.5),
-        A.Affine(scale=(0.9, 1.1), translate_percent=(0.05, 0.05), rotate=(-10, 10), p=0.5),  # Remplace RandomRotate90
-        A.RandomBrightnessContrast(brightness_limit=0.1, contrast_limit=0.1, p=0.4),
-        A.GaussNoise(p=0.3),
-        A.GaussianBlur(blur_limit=(1, 3), p=0.1),  # Réduit l'impact
-        A.ElasticTransform(alpha=1, sigma=50, alpha_affine=50, p=0.2)  # Gardé pour la variabilité des formes
+        A.Affine(scale=(0.9, 1.1), translate_percent=(0.02, 0.02), rotate=(-15, 15), p=0.5),  # Remplace RandomRotate90
+        A.RandomBrightnessContrast(brightness_limit=0.05, contrast_limit=0.05, p=0.3),
+        A.GaussianBlur(blur_limit=1, p=0.2),  # Ajout pour défocaliser légèrement
+        A.MotionBlur(blur_limit=3, p=0.15),  # Remis pour imiter des flous naturels des scanners
+        A.GaussianBlur(blur_limit=1, p=0.2),  # Léger flou pour éviter de surinterpréter le bruit
+        A.ElasticTransform(alpha=0.5, sigma=30, p=0.1),  # Gardé pour la variabilité des formes
+        A.Sharpen(alpha=(0.2, 0.5), lightness=(0.5, 1.0), p=0.2)  # Pour renforcer contours vivants
     ], additional_targets={"mask": "mask"})
+    """
 
+    train_transform = A.Compose([
+        A.Affine(scale=(0.95, 1.05), translate_percent=(0.02, 0.02), rotate=(-5, 5), p=0.6),  # Plus de variation sur la taille et rotation
+        A.VerticalFlip(p=0.3),  
+        A.HorizontalFlip(p=0.4),  
+        A.MotionBlur(blur_limit=3, p=0.07),  # Simulation de flou scanner mais limité
+        #A.ElasticTransform(alpha=0.3, sigma=10, p=0.05),  # Toujours faible mais un peu plus fréquent
+        A.Sharpen(alpha=(0.2, 0.4), lightness=(0.5, 0.7), p=0.15),  # Renforce les contours pour éviter que le modèle prenne des petits objets flous pour vivants
+        A.CoarseDropout(
+            num_holes_range=(1, 2),  # Nombre de trous (min, max)
+            hole_height_range=(8, 16),  # Hauteur des trous en pixels
+            hole_width_range=(8, 16),  # Largeur des trous en pixels
+            fill=0,  # Valeur de remplissage (ex: 0 pour noir, "random" pour bruit)
+            p=0.05  # Probabilité d'application
+            )        
+        ], additional_targets={"mask": "mask"})
+    logging.info(train_transform)
+    
     # Charger une seule fois le dataset complet
     full_dataset = planktonds.PlanktonDataset(
         image_mask_dir=data_config['trainpath'],

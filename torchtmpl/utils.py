@@ -133,9 +133,12 @@ def test(model, loader, f_loss, device):
         loader    -- A torch.utils.data.DataLoader
         f_loss    -- The loss function, i.e. a loss Module
         device    -- A torch.device
+
     Returns :
-        total_loss -- The average loss over the dataset
-        f1         -- The F1-score computed over the dataset
+        avg_loss     -- The average loss over the dataset
+        avg_f1       -- The F1-score computed over the dataset
+        avg_precision -- The precision computed over the dataset
+        avg_recall   -- The recall computed over the dataset
     """
 
 
@@ -188,10 +191,10 @@ def test(model, loader, f_loss, device):
             total_f1 += f1
             num_batches += 1
 
-    # Compute the average loss
     avg_loss = total_loss / num_samples
-
-    # Compute the average F1-score
     avg_f1 = total_f1 / num_batches
+    avg_precision = total_precision / num_batches
+    avg_recall = total_recall / num_batches
 
-    return avg_loss, avg_f1
+
+    return avg_loss, avg_f1, avg_precision, avg_recall

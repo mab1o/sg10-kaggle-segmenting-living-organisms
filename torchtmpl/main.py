@@ -64,8 +64,25 @@ def train(config):
             gamma=loss_config.get("gamma", 1.1)
         )
         print(f"Using FocalTverskyLoss with alpha={loss_config['alpha']}, beta={loss_config['beta']}, and gamma={loss_config['gamma']}")
+    
+    elif loss_config["name"] == "Tversky-BCE":
+        # Initialisation des pertes
+        bce_loss = torch.nn.BCEWithLogitsLoss(
+            pos_weight=torch.tensor([loss_config.get("pos_weight", 1.0)], device=device)
+        )
+        tversky_loss = losses.TverskyLoss(
+            alpha=loss_config.get("alpha", 0.3), 
+            beta=loss_config.get("beta", 0.7)
+        )
+
+        # Définition de la loss combinée : 0.8 Tversky + 0.2 BCE
+        def combined_loss(pred, target):
+            return 0.8 * tversky_loss(pred, target) + 0.2 * bce_loss(pred, target)
+
+        loss = combined_loss  # NE PAS PASSER PAR optim.get_loss()
+
     else:
-        loss = optim.get_loss(loss_config["name"])
+        loss = optim.get_loss(loss_config["name"])  # Pour les pertes standards uniquement
 
     # Build the optimizer
     logging.info("= Optimizer")
@@ -119,17 +136,18 @@ def train(config):
         # Train 1 epoch
         train_loss = utils.train(model, train_loader, loss, optimizer, device)
 
-        # Test
-        test_loss, test_f1 = utils.test(model, valid_loader, loss, device)
+        test_loss, test_f1, test_precision, test_recall = utils.test(model, valid_loader, loss, device)
 
         # Mise à jour du checkpoint si meilleur F1-score
         updated = model_checkpoint.update(test_f1)
         logging.info(
-            "[%d/%d] Test loss : %.4f, Test F1-score : %.4f %s"
+            "[%d/%d] Test loss : %.4f, Precision : %.4f, Recall : %.4f, Test F1-score : %.4f %s"
             % (
                 e,
                 config["nepochs"],
                 test_loss,
+                test_precision,
+                test_recall,
                 test_f1,
                 "[>> BETTER F1-score <<]" if updated else "",
             )
@@ -138,9 +156,13 @@ def train(config):
         # Log dans wandb
         if wandb_log is not None:
             logging.info("Logging on wandb")
-            wandb_log({"train_CE": train_loss, "test_CE": test_loss, "test_F1": test_f1})
-
-
+            wandb_log({
+                "train_CE": train_loss,
+                "test_CE": test_loss,
+                "test_Precision": test_precision,
+                "test_Recall": test_recall,
+                "test_F1": test_f1
+            })
 
 
 # Use for visualize and validate result with binary prediction.
