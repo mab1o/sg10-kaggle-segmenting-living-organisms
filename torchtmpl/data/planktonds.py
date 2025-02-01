@@ -5,7 +5,7 @@ import os
 import numpy as np
 import torch
 from torch.utils.data import Dataset
-from torchvision.io import read_image
+
 
 # Local imports
 from . import patch
@@ -48,7 +48,6 @@ class PlanktonDataset(Dataset):
 
         self.total_patches = sum(x * y for x, y in self.image_patches)
 
-
             
     def _calculate_num_patches(self, width, height):
         """
@@ -70,7 +69,7 @@ class PlanktonDataset(Dataset):
     def __getitem__(self, idx):
         assert idx < len(self), f"Index out of range: {idx}"
 
-        # Identifier le patch image
+        # Determine the image and patch indices
         current_idx = idx
         for image_idx, (num_patches_x, num_patches_y) in enumerate(self.image_patches):
             num_patches = num_patches_x * num_patches_y
@@ -86,15 +85,13 @@ class PlanktonDataset(Dataset):
             return torch.from_numpy(image_patch).unsqueeze(0).float()
 
         mask_patch = self._get_mask_patch(image_idx, image_row, image_column)
-
-        # Appliquer la transformation uniquement si `apply_transform` est True
-        if self.apply_transform and self.transform:
-            augmented = self.transform(image=image_patch, mask=mask_patch)
-            image_patch, mask_patch = augmented["image"], augmented["mask"]
+        if self.transform != None:
+            augmented   = self.transform(image=image_patch, mask=mask_patch)
+            image_patch = augmented["image"]
+            mask_patch  = augmented["mask"]
 
         image_patch = torch.from_numpy(image_patch).unsqueeze(0).float()
         mask_patch = torch.from_numpy(mask_patch).float()
-
         return image_patch, mask_patch
 
     def _get_mask_patch(self, image_idx, image_row, image_column):
