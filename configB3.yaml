@@ -12,8 +12,8 @@ data:
 optim:
   algo: AdamW
   params:
-    lr: 0.001   # Réduction du LR pour stabiliser l’apprentissage
-    weight_decay: 0.001  # Plus fort pour éviter le sur-apprentissage
+    lr: 0.0015   # Réduction du LR pour stabiliser l’apprentissage
+    weight_decay: 0.0005  # Plus fort pour éviter le sur-apprentissage
 
 scheduler:
   class: CosineAnnealingWarmRestarts
@@ -38,15 +38,15 @@ logging:
 
 
 model:
-  class: UNet
-  encoder:
-    model_name: resnet34  # Remplacement par resnet34 pour améliorer les features
-    
+  class: EfficientNetB3Segmentation
+  input_channels: 1  # Modify based on your input data
+  num_classes: 1     # Binary segmentation
+
 #désactiver si pas de ré-entrainement
 #pretrained_model: "logs/UNet_10/best_model.pt"
 #current best is UNet_10.
 
 test:
-  model_path: 'logs/UNet_8/'
+  model_path: 'logs/UNet_10/'
   model_name: 'best_model.pt'
   model_config: 'config.yaml'

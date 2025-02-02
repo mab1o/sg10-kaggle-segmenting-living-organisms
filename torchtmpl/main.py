@@ -48,6 +48,14 @@ def train(config):
     model = models.build_model(model_config, input_size, num_classes)
     model.to(device)
 
+    # Charger le modèle pré-entraîné si un chemin est spécifié
+    if "pretrained_model" in config and os.path.exists(config["pretrained_model"]):
+        logging.info(f"Loading pretrained model from {config['pretrained_model']}")
+        model.load_state_dict(torch.load(config["pretrained_model"], map_location=device, weights_only=True))
+    else:
+        logging.warning("No pretrained model found, training from scratch.")
+
+
     # Build the loss
     logging.info("= Loss")
     loss_config = config["loss"]
@@ -291,9 +299,16 @@ def sub(config):
             #logging.info(f"  - predict mask {global_idx} (patch {idx_patch} in image {image_idx})")
             image = dataset_test[global_idx].unsqueeze(0).to(device)
             
-            # put threshold at the value given py test_proba.
+
+            prediction = model.predict(image)
+
+            # Apply sigmoid + threshold only for RegNetY models because it ouputs logits
             threshold = 0.5
-            dataset_test.insert(model.predict(image, threshold))
+
+            if config['model']['encoder']['model_name'] == "timm-regnety_032":
+                prediction = (torch.sigmoid(prediction) > threshold).long()
+
+            dataset_test.insert(prediction)
 
 
     logging.info("= To submit")

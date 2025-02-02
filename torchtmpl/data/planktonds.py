@@ -168,15 +168,14 @@ class PlanktonDataset(Dataset):
         ]
         submission.generate_submission_file(predictions, name_mask, file_name)
 
-
     def reconstruct_mask(self, idx, binary=True):
         """
         Reconstruct the full mask for a given image.
 
         Args:
             idx (int): ID of the image.
-            binary (bool): If True, place patch data directly as binary (0/1). 
-                        If False, handle possible shape/transpose issues (e.g. for probability maps).
+            binary (bool): If True, applies thresholding (0/1).
+                        If False, preserves raw model output.
 
         Returns:
             torch.Tensor: Reconstructed mask.
@@ -184,13 +183,14 @@ class PlanktonDataset(Dataset):
         start_idx = sum(x * y for x, y in self.image_patches[:idx])
         end_idx = start_idx + self.image_patches[idx][0] * self.image_patches[idx][1]
 
-        patches = [self[i][1] if self.mode == 'train' else self.mask_files[i] 
+        patches = [self[i][1] if self.mode == 'train' else self.mask_files[i]
                 for i in range(start_idx, end_idx)]
 
-        width, height = self.images_size[idx]        
+        width, height = self.images_size[idx]
         patch_width, patch_height = self.patch_size
         num_patches_width, num_patches_height = self.image_patches[idx]
-        reconstruct_mask = torch.zeros((height, width), dtype=patches[0].dtype)
+
+        reconstruct_mask = torch.zeros((height, width), dtype=torch.float32)  # Ensure correct dtype
 
         patch_index = 0
         for x in range(num_patches_height):
@@ -205,23 +205,25 @@ class PlanktonDataset(Dataset):
                 patch_x_start = ((x + 1) * patch_height) - x_end
                 patch_y_start = ((y + 1) * patch_width) - y_end
 
+                # Ensure patch is 2D (H, W)
+                if patch.dim() == 4:
+                    patch = patch.squeeze(0).squeeze(0)  # Convert (1, 1, H, W) -> (H, W)
+                elif patch.dim() == 3:
+                    patch = patch.squeeze(0)  # Convert (1, H, W) -> (H, W)
+
+                # Apply binary thresholding if needed (for RegNetY or other models outputting logits)
                 if binary:
-                    # Direct assignment if we're sure it's 0/1 data
-                    reconstruct_mask[x_start:x_end, y_start:y_end] = patch[patch_x_start:, patch_y_start:]
-                else:
-                    # Handle possible 4D shape or mismatch
-                    if patch.dim() == 4:  # e.g. (1, C, H, W)
-                        patch = patch.squeeze(0).squeeze(0)  # remove extra dims
+                    patch = (patch > 0.5).long()
 
-                    if patch.shape != reconstruct_mask[x_start:x_end, y_start:y_end].shape:
-                        # If shapes still mismatch, transpose the patch
-                        patch = patch.T
-
-                    reconstruct_mask[x_start:x_end, y_start:y_end] = patch[patch_x_start:, patch_y_start:]
+                # Assign to the final reconstructed mask
+                reconstruct_mask[x_start:x_end, y_start:y_end] = patch[patch_x_start:, patch_y_start:]
 
                 patch_index += 1
 
         return reconstruct_mask
+
+
+
 
     def __repr__(self):
         return f"PlanktonDataset(mode={self.mode},"\

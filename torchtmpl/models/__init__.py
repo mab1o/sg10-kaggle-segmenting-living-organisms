@@ -8,7 +8,8 @@ from .base_models import *
 from .cnn_models import *
 from .unet import *
 from .efficientnet_b3_segmentation import *
-
+#from .unet_convnext import *
+import segmentation_models_pytorch as smp
 
 
 def build_model(cfg, input_size, num_classes):
@@ -17,5 +18,12 @@ def build_model(cfg, input_size, num_classes):
             input_channels=input_size[0], 
             num_classes=num_classes
         )
-    # Handle other models
+    elif cfg['class'] == 'UNet' and 'regnety_032' in cfg['encoder']['model_name']:
+            return smp.Unet(
+                encoder_name="timm-regnety_032",  # RegNetY-3.2GF
+                encoder_weights="imagenet",       # Poids pré-entraînés
+                in_channels=1,                    # Images en niveaux de gris
+                classes=1                         # Segmentation binaire
+            )
+
     return eval(f"{cfg['class']}(cfg, input_size, num_classes)")
