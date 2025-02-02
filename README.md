@@ -1,73 +1,52 @@
-# Template base code for pytorch
+# Kaggle - Segmenting living organisms
 
-This repository contains a template base code for a complete pytorch pipeline.
+## About
 
-This is a template because it works on fake data but aims to illustrate some pythonic syntax allowing the pipeline to be modular.
-
-More specifically, this template base code aims to target :
-
-- modularity : allowing to change models/optimizers/ .. and their hyperparameters easily
-- reproducibility : saving the commit id, ensuring every run saves its assets in a different directory, recording a summary card for every experiment, building a virtual environnement
-
-For the last point, if you ever got a good model as an orphane pytorch tensor whithout being able to remember in which conditions, with which parameters and so on you got, you see what I mean. 
+This project was developed as part of a [Kaggle challenge](https://www.kaggle.com/competitions/3md4040-2025-challenge) for the 3rd-year Deep Learning course. The objective is to perform pixel-level detection of living organisms—specifically plankton—in large grayscale images of approximately 22,000 x 14,000 resolution. The challenge involves designing a robust deep learning solution capable of accurately identifying plankton at this fine granularity, making it a complex problem at the intersection of computer vision and scientific research. The project not only tackles the technical challenges of high-resolution image processing but also contributes to advancing knowledge in biological imaging and automated plankton detection.
 
 ## Usage
 
-### Local experimentation
+### Getting Started
 
-For a local experimentation, you start by setting up the environment :
+1. Setting up the environment :
 
-```
-python3 -m virtualenv venv
-source venv/bin/activate
-python -m pip install .
-```
+    ```bash
+    python3 -m venv $TMPDIR/venv
+    source $TMPDIR/venv/bin/activate
+    python -m pip install .
+    ```
 
-Then you can run a training, by editing the yaml file, then 
+2. Run a training :
 
-```
-python -m torchtmpl.main config.yaml train
-```
+    ```bash
+    python -m torchtmpl.main config.yaml train
+    ```
 
-And for testing and creating the submission.csv
+3. Create the submission.csv
 
-```
-python -m torchtmpl.main config.yaml test
-```
+    ```bash
+    python -m torchtmpl.main config.yaml test
+    ```
 
-For submitting the submission.csv file:
-```
-kaggle competitions submit -c 3md4040-2025-challenge -f submission.csv -m "Message"
-```
+4. Submit the submission.csv file:
+
+    ```bash
+    kaggle competitions submit -c 3md4040-2025-challenge -f submission.csv -m "Message"
+    ```
 
 ### Cluster experimentation (**not yet implemented**)
 
 For running the code on a cluster, we provide an example script for starting an experimentation on a SLURM based cluster.
-
 The script we provide is dedicated to a use on our clusters and you may need to adapt it to your setting. 
-
 Then running the simulation can be as simple as :
 
-```
+```bash
 python3 submit.py
 ```
 
-## Testing the functions
+## Project Structure
 
-Every module/script is equiped with some test functions. Although these are not unitary tests per se, they nonetheless illustrate how to test the provided functions.
-
-For example, you can call :
-
-```
-python3 -m venv $TMPDIR/venv
-source $TMPDIR/venv/bin/activate
-python -m pip install .
-python -m torchtmpl.models
-```
-
-and this will call the test functions in the `torchtmpl/models/__main__.py` script.
-
-## Tree
+### Tree
 
 ```plaintext
 ├── config.yaml
@@ -77,50 +56,28 @@ and this will call the test functions in the `torchtmpl/models/__main__.py` scri
 ├── setup.py
 ├── submit-slurm.py
 └── torchtmpl
-    ├── data
-    │   ├── dataloader.py     # data management
-    │   ├── encoder.py        # utils for binary to string
-    │   ├── __init__.py       # functions exportable
-    │   ├── __main__.py       # test file
-    │   ├── patch.py          # utils to extract patch from a image
-    │   ├── planktonds.py     # dataset inherited from torch.Dataset
-    │   └── submission.py     # utils for submission
+    ├── data         # data management
     ├── __init__.py
     ├── main.py
-    ├── models
-    │   ├── base_models.py
-    │   ├── cnn_models.py
-    │   ├── __init__.py       # functions exportable
-    │   └── __main__.py       # test file
+    ├── models       # model management
     ├── optim.py
     └── utils.py
 ```
 
-## Suggested milestones
+### Projet Choices
 
-Write a full basic pipeline with all the boiler plate code before going in depth.
+To have more details on the project decisions go see : [the Wiki](https://gitlab-student.centralesupelec.fr/margaux.blondel/kaggle-segmenting-living-organisms/-/wikis/home).
+
+## Minimum Viable Product (MVP) milestones
 
 - [x] **DATA** : write a PlanktonDataset as pytorch Dataset
 - [x] **MODEL** : implement a basic baseline model,
-- [ ] **METRICS** : implement the basic metrics of interest, in particulier F1 score
+- [x] **METRICS** : implement the basic metrics of interest, in particulier F1 score
 - [x] **SUBMISSION** : Write the test function to generate the submission file
-- [ ] **LOG** : Consider logging your experiments to online dashboards (e.g. wandb)
+- [x] **LOG** : Consider logging your experiments to online dashboards (e.g. wandb)
 - [x] **DCE** : Run your first experiments with basic models, basic pipelines, small set of training data, and make your first submissions
 
-Then you have your MVP (Minimal Viable Product), you can iterate on extensions.
+## Useful links
 
-
-## Useful link
-
-- https://frezza.pages.centralesupelec.fr/teachml2/Supports/NeuralNetworks/02-ffn.html#/example-on-a-regression-problem-1
-- https://frezza.pages.centralesupelec.fr/teachml2/Supports/NeuralNetworks/00-intro.html#/evaluation-33/0
-
-## Projet Choices
-
-- square patch: why?
-- size of the batch: why?
-- patch of the image no overlapping: why?
-- incomplete last batch: why?
-- number of epoch : why ?
-- init of the neurones: why ?
-- model shape: why? + schema
+- [Regression Problem Example](https://frezza.pages.centralesupelec.fr/teachml2/Supports/NeuralNetworks/02-ffn.html#/example-on-a-regression-problem-1)
+- [Evaluated criterion](https://frezza.pages.centralesupelec.fr/teachml2/Supports/NeuralNetworks/00-intro.html#/evaluation-33/0)

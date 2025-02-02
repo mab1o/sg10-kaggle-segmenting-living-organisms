@@ -6,6 +6,11 @@ __pycache__/
 *.csv
 *.png
 
+# jobs on slurm
+job.sbatch
+configs/
+logslurms
+
 # Distribution / packaging
 .Python
 build/

@@ -17,7 +17,6 @@ from . import data
 from . import models
 from . import optim
 from . import utils
-from . import losses
 
 if torch.cuda.is_available():
     os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "expandable_segments:True"
@@ -58,39 +57,7 @@ def train(config):
 
     # Build the loss
     logging.info("= Loss")
-    loss_config = config["loss"]
-    if loss_config["name"] == "BCEWithLogitsLoss":
-        pos_weight = torch.tensor([loss_config.get("pos_weight", 1.0)], device=device)
-        loss = torch.nn.BCEWithLogitsLoss(pos_weight=pos_weight)
-    elif loss_config["name"] == "TverskyLoss":
-        loss = losses.TverskyLoss(alpha=loss_config.get("alpha", 0.3), beta=loss_config.get("beta", 0.7))
-        print(f"Using TverskyLoss with alpha={loss_config['alpha']} and beta={loss_config['beta']}")
-    elif loss_config["name"] == "FocalTverskyLoss":
-        loss = losses.FocalTverskyLoss(
-            alpha=loss_config.get("alpha", 0.3),
-            beta=loss_config.get("beta", 0.7),
-            gamma=loss_config.get("gamma", 1.1)
-        )
-        print(f"Using FocalTverskyLoss with alpha={loss_config['alpha']}, beta={loss_config['beta']}, and gamma={loss_config['gamma']}")
-    
-    elif loss_config["name"] == "Tversky-BCE":
-        # Initialisation des pertes
-        bce_loss = torch.nn.BCEWithLogitsLoss(
-            pos_weight=torch.tensor([loss_config.get("pos_weight", 1.0)], device=device)
-        )
-        tversky_loss = losses.TverskyLoss(
-            alpha=loss_config.get("alpha", 0.3), 
-            beta=loss_config.get("beta", 0.7)
-        )
-
-        # Définition de la loss combinée : 0.8 Tversky + 0.2 BCE
-        def combined_loss(pred, target):
-            return 0.8 * tversky_loss(pred, target) + 0.2 * bce_loss(pred, target)
-
-        loss = combined_loss  # NE PAS PASSER PAR optim.get_loss()
-
-    else:
-        loss = optim.get_loss(loss_config["name"])  # Pour les pertes standards uniquement
+    loss = optim.get_loss(config["loss"]["name"], config["loss"], device)
 
     # Build the optimizer
     logging.info("= Optimizer")
@@ -130,7 +97,6 @@ def train(config):
     # Écriture du résumé de l'expérience
     with open(logdir / "summary.txt", "w") as f:
         f.write(summary_text)
-
     if wandb_log is not None:
         wandb.log({"summary": summary_text})
 
@@ -172,9 +138,8 @@ def train(config):
                 "test_F1": test_f1
             })
 
-
-# Use for visualize and validate result with binary prediction.
 def test(config):
+    """Use for visualize and validate result with binary prediction"""
     use_cuda = torch.cuda.is_available()
     device = torch.device("cuda") if use_cuda else torch.device("cpu")
     model_name = config['test']['model_path'] + config['test']['model_name']
@@ -183,7 +148,6 @@ def test(config):
     logging.info("= Dataset")
     dataset_test = data.PlanktonDataset(
         config['data']['trainpath'],config['data']['patch_size'],mode='test')
-    #dataset_teset = config .. trainpath ??
     dataset_train = data.PlanktonDataset(
         config['data']['trainpath'],config['data']['patch_size'])
     input_size = tuple(dataset_train[0][0].shape)
@@ -199,7 +163,6 @@ def test(config):
     model.to(device)
     model.load_state_dict(torch.load(model_name))
     model.eval()
-
 
     # Seconde partie de test: Utiliser les prédiction
     logging.info("= Predict first image")
@@ -219,9 +182,8 @@ def test(config):
     #data.show_mask_predict_compare_to_real(dataset_test,0,dataset_train,"compare_mask_1.png")
 
 
-
-# Use for visualize and validate result with probability instead of binary prediction.
 def test_proba(config):
+    """Use for visualize and validate result with probability instead of binary prediction"""
     use_cuda = torch.cuda.is_available()
     device = torch.device("cuda") if use_cuda else torch.device("cpu")
     model_name = config['test']['model_path'] + config['test']['model_name']
@@ -246,7 +208,6 @@ def test_proba(config):
     model.load_state_dict(torch.load(model_name))
     model.eval()
 
-
     # Seconde partie de test_with_proba: mask de proba prédit vs le mask binaire réel
     # or seul dataset_train à des masks binaire réels.
     logging.info("= Predict probabilities and compare to real masks")
@@ -266,6 +227,7 @@ def test_proba(config):
 
     # Visualiser le mask de proba prédit vs le mask binaire réel
     # et calcule le meilleur seuil pour obtenir le plus grand F1-score
+    logging.info("= Show probabilities and compare to real masks")
     data.show_predicted_mask_proba_vs_real_mask_binary(dataset_train_proba, 0, dataset_train, "proba_compared_real_1.png")
 
 
@@ -310,10 +272,8 @@ def sub(config):
 
             dataset_test.insert(prediction)
 
-
     logging.info("= To submit")
     dataset_test.to_submission()
-
 
 
 
