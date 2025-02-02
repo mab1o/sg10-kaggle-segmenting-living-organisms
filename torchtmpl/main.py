@@ -17,6 +17,7 @@ from . import data
 from . import models
 from . import optim
 from . import utils
+from torchtmpl.data.transformations import get_transforms
 
 if torch.cuda.is_available():
     os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "expandable_segments:True"
@@ -78,6 +79,12 @@ def train(config):
         artifact = wandb.Artifact("config", type="config")
         artifact.add_file(str(config_path))
         wandb.log_artifact(artifact)
+
+
+    chosen_transforms = get_transforms(config["data"]["transform_type"])
+    logging.info(f'Niveau de transformation: {(config["data"]["transform_type"])}')
+    # Afficher dans le terminal avec logging
+    logging.info(f"Transformations appliquées : {chosen_transforms}")
 
     # Make a summary script of the experiment
     logging.info("= Summary")

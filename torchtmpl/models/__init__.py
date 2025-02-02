@@ -25,5 +25,18 @@ def build_model(cfg, input_size, num_classes):
                 in_channels=1,                    # Images en niveaux de gris
                 classes=1                         # Segmentation binaire
             )
-
+    elif cfg['class'] == 'UNet++' and 'regnety_032' in cfg['encoder']['model_name']:
+        return smp.UnetPlusPlus(
+            encoder_name="timm-regnety_032",  # RegNetY-3.2GF
+            encoder_weights="imagenet",       # Poids pré-entraînés
+            in_channels=1,                    # Images en niveaux de gris
+            classes=1                         # Segmentation binaire
+        )
+    elif cfg['class'] == 'DeepLabV3Plus' :
+        return smp.DeepLabV3Plus(
+            encoder_name=cfg['encoder']['model_name'],  # SegFormer, better than CNNs
+            encoder_weights="imagenet",
+            in_channels=1,
+            classes=1
+        )
     return eval(f"{cfg['class']}(cfg, input_size, num_classes)")

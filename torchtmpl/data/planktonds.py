@@ -85,10 +85,12 @@ class PlanktonDataset(Dataset):
             return torch.from_numpy(image_patch).unsqueeze(0).float()
 
         mask_patch = self._get_mask_patch(image_idx, image_row, image_column)
-        if self.transform != None:
-            augmented   = self.transform(image=image_patch, mask=mask_patch)
-            image_patch = augmented["image"]
-            mask_patch  = augmented["mask"]
+
+
+        if self.apply_transform and self.transform:
+            augmented = self.transform(image=image_patch, mask=mask_patch)
+            image_patch, mask_patch = augmented["image"], augmented["mask"]
+
 
         image_patch = torch.from_numpy(image_patch).unsqueeze(0).float()
         mask_patch = torch.from_numpy(mask_patch).float()

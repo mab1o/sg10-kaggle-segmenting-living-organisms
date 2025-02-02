@@ -9,6 +9,7 @@ import albumentations as A
 
 # Local imports
 from . import planktonds
+from .transformations import get_transforms
 
 def get_dataloaders(data_config, use_cuda):
     """
@@ -33,9 +34,8 @@ def get_dataloaders(data_config, use_cuda):
     quick_test = data_config["quick_test"]
 
     logging.info("  - Dataset creation (PlanktonDataset)")
-    transform = None
-    if data_config["augmented_data"]:
-        transform = A.Compose([A.VerticalFlip(p=0.3), A.HorizontalFlip(p=0.3),A.GaussianBlur(p=0.01) ])
+    transform_type = data_config.get("transform_type", "default")  # Par défaut, transformations légères
+    transform = get_transforms(transform_type)
     base_dataset = planktonds.PlanktonDataset(
         image_mask_dir=data_config['trainpath'],
         patch_size=data_config["patch_size"],
@@ -60,6 +60,10 @@ def get_dataloaders(data_config, use_cuda):
 
     train_dataset = torch.utils.data.Subset(base_dataset, train_indices)
     valid_dataset = torch.utils.data.Subset(base_dataset, valid_indices)
+
+    # Activer les transformations seulement pour train
+    train_dataset.dataset.apply_transform = True  #
+    # !! Nécessaire pour que valid dataset reste false !!
 
     # Build the dataloaders
     train_loader = torch.utils.data.DataLoader(
