@@ -25,7 +25,7 @@ This project was developed as part of a [Kaggle challenge](https://www.kaggle.co
 3. Create the submission.csv
 
     ```bash
-    python -m torchtmpl.main config.yaml test
+    python -m torchtmpl.main config.yaml sub
     ```
 
 4. Submit the submission.csv file:
@@ -33,6 +33,16 @@ This project was developed as part of a [Kaggle challenge](https://www.kaggle.co
     ```bash
     kaggle competitions submit -c 3md4040-2025-challenge -f submission.csv -m "Message"
     ```
+
+5. Visualize the data and gain insights
+
+```bash
+python -m torchtmpl.main config.yaml test
+```
+```bash
+python -m torchtmpl.main config.yaml test_proba
+```
+
 
 ### Cluster experimentation (**not yet implemented**)
 
