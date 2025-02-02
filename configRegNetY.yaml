@@ -3,10 +3,10 @@ data:
   root_dir: '/mounts/Datasets3/2024-2025-ChallengePlankton/'
   trainpath: '/mounts/Datasets3/2024-2025-ChallengePlankton/train/'
   testpath: '/mounts/Datasets3/2024-2025-ChallengePlankton/test/'
-  batch_size: 96 #64 takes 10 GB of VRAM  
+  batch_size: 128 #64 takes 10 GB of VRAM  
   num_workers: 8
   valid_ratio: 0.1
-  patch_size: [384, 384]  
+  patch_size: [256, 256]  
   quick_test: false
   transform_type: "medium" #none, light, medium, high
 
@@ -39,7 +39,7 @@ logging:
   logdir: "./logs"
 
 model:
-  class: DeepLabV3Plus  # Unet avec RegNetY comme encodeur
+  class: Unet  # Unet avec RegNetY comme encodeur
   encoder:
     model_name: timm-regnety_032  # RegNetY-3.2GF, supporté par SMP
 

@@ -12,31 +12,37 @@ from .efficientnet_b3_segmentation import *
 import segmentation_models_pytorch as smp
 
 
+
+# List of valid segmentation models in SMP
+SMP_MODELS = {
+    "Unet": smp.Unet,
+    "UnetPlusPlus": smp.UnetPlusPlus,
+    "DeepLabV3": smp.DeepLabV3,
+    "DeepLabV3Plus": smp.DeepLabV3Plus,
+    "FPN": smp.FPN,
+    "PAN": smp.PAN,
+    "PSPNet": smp.PSPNet,
+    "Linknet": smp.Linknet
+}
+
 def build_model(cfg, input_size, num_classes):
-    if cfg['class'] == 'EfficientNetB3Segmentation':
-        return EfficientNetB3Segmentation(
-            input_channels=input_size[0], 
-            num_classes=num_classes
-        )
-    elif cfg['class'] == 'UNet' and 'regnety_032' in cfg['encoder']['model_name']:
-            return smp.Unet(
-                encoder_name="timm-regnety_032",  # RegNetY-3.2GF
-                encoder_weights="imagenet",       # Poids pré-entraînés
-                in_channels=1,                    # Images en niveaux de gris
-                classes=1                         # Segmentation binaire
-            )
-    elif cfg['class'] == 'UNet++' and 'regnety_032' in cfg['encoder']['model_name']:
-        return smp.UnetPlusPlus(
-            encoder_name="timm-regnety_032",  # RegNetY-3.2GF
-            encoder_weights="imagenet",       # Poids pré-entraînés
-            in_channels=1,                    # Images en niveaux de gris
-            classes=1                         # Segmentation binaire
-        )
-    elif cfg['class'] == 'DeepLabV3Plus' :
-        return smp.DeepLabV3Plus(
-            encoder_name=cfg['encoder']['model_name'],  # SegFormer, better than CNNs
+
+    model_class = cfg['class']
+    encoder_name = cfg['encoder']['model_name']
+
+    # Validate if the model exists in SMP
+    if model_class in SMP_MODELS:
+        return SMP_MODELS[model_class](
+            encoder_name=encoder_name,
             encoder_weights="imagenet",
-            in_channels=1,
-            classes=1
+            in_channels=1,  # Grayscale images
+            classes=1,  # Binary segmentation
         )
+    
+    if model_class == 'EfficientNetB3Segmentation':
+        return EfficientNetB3Segmentation(
+        input_channels=input_size[0], 
+        num_classes=num_classes
+    )
+    
     return eval(f"{cfg['class']}(cfg, input_size, num_classes)")
