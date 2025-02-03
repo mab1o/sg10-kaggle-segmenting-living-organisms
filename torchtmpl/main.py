@@ -52,8 +52,8 @@ def train(config):
     if "pretrained_model" in config and os.path.exists(config["pretrained_model"]):
         logging.info(f"Loading pretrained model from {config['pretrained_model']}")
         model.load_state_dict(torch.load(config["pretrained_model"], map_location=device, weights_only=True))
-    else:
-        logging.warning("No pretrained model found, training from scratch.")
+    #else:
+        #logging.warning("No pretrained model found, training from scratch.")
 
 
     # Build the loss
@@ -281,6 +281,57 @@ def sub(config):
 
     logging.info("= To submit")
     dataset_test.to_submission()
+
+
+
+def sub_ensemble(config):
+    use_cuda = torch.cuda.is_available()
+    device = torch.device("cuda" if use_cuda else "cpu")
+
+    # Load Model Config
+    config = yaml.safe_load(open(config['test']['model_path'] + config['test']['model_config'], "r"))
+    model_config = config["model"]
+
+    logging.info("= Dataset")
+    dataset_test = data.PlanktonDataset(config['data']['testpath'], config['data']['patch_size'], mode='test')
+    input_size = tuple(dataset_test[0].shape)
+    num_classes = input_size[0]
+
+    logging.info(f"  - Number of samples: {len(dataset_test)}")
+
+    # Load Multiple Models for Ensembling
+    logging.info("= Loading Models")
+    model_paths = [
+        "logs/model1_best.pt",
+        "logs/model2_best.pt",
+        "logs/model3_best.pt"
+    ]
+    models = []
+    for path in model_paths:
+        model = models.build_model(model_config, input_size, num_classes)
+        model.to(device)
+        model.load_state_dict(torch.load(path, map_location=device))
+        model.eval()
+        models.append(model)
+
+    logging.info("= Predicting masks for test images")
+    test_loader = torch.utils.data.DataLoader(dataset_test, batch_size=32, shuffle=False, num_workers=4)
+
+    with torch.no_grad():
+        for batch in test_loader:
+            images = batch.to(device)
+
+            # Average Predictions Across Models
+            predictions = [model(images).sigmoid() for model in models]
+            avg_prediction = torch.mean(torch.stack(predictions), dim=0)
+
+            # Thresholding
+            dataset_test.insert((avg_prediction > 0.5).long())
+
+    # Save Submission
+    logging.info("= Saving Submission")
+    dataset_test.to_submission()
+    logging.info("= Submission Saved Successfully ✅")
 
 
 

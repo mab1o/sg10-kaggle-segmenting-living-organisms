@@ -22,7 +22,8 @@ SMP_MODELS = {
     "FPN": smp.FPN,
     "PAN": smp.PAN,
     "PSPNet": smp.PSPNet,
-    "Linknet": smp.Linknet
+    "Linknet": smp.Linknet,
+    "Segformer": smp.Segformer
 }
 
 def build_model(cfg, input_size, num_classes):
@@ -32,12 +33,23 @@ def build_model(cfg, input_size, num_classes):
 
     # Validate if the model exists in SMP
     if model_class in SMP_MODELS:
-        return SMP_MODELS[model_class](
-            encoder_name=encoder_name,
-            encoder_weights="imagenet",
-            in_channels=1,  # Grayscale images
-            classes=1,  # Binary segmentation
-        )
+        model_params = {
+            "encoder_name": encoder_name,
+            "encoder_weights": "imagenet",
+            "in_channels": 1,  # Grayscale images
+            "classes": 1  # Binary segmentation
+        }
+        
+        # Ajout spécifique pour Unet et Unet++
+        if model_class in ["Unet", "UnetPlusPlus"]:
+            model_params["decoder_attention_type"] = "scse"
+        
+        # Ajout spécifique pour SegFormer
+        if model_class == "Segformer":
+            model_params["decoder_segmentation_channels"] = 256
+
+        return SMP_MODELS[model_class](**model_params)
+
     
     if model_class == 'EfficientNetB3Segmentation':
         return EfficientNetB3Segmentation(

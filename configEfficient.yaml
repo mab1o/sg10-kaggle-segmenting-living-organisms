@@ -7,7 +7,7 @@ data:
   num_workers: 8
   valid_ratio: 0.1
   patch_size: [256, 256]  
-  quick_test: true
+  quick_test: false
   transform_type: "medium-best"
 
 optim:
@@ -19,11 +19,11 @@ optim:
 scheduler:
   class: CosineAnnealingWarmRestarts
   params:
-    T_0: 3  # Meilleur warm-up
+    T_0: 4  # Meilleur warm-up
     T_mult: 2
     eta_min: 1e-6
 
-nepochs: 12  
+nepochs: 15
 pos_weight: 1
 
 loss:
