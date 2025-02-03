@@ -7,7 +7,7 @@ data:
   num_workers: 8
   valid_ratio: 0.1
   patch_size: [256, 256]  
-  quick_test: false
+  quick_test: true
   transform_type: "medium-best"
 
 optim:

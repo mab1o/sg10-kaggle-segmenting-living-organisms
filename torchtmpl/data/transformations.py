@@ -25,6 +25,16 @@ def get_transforms(transform_type="light"):
             A.GaussianBlur(p=0.01)
         ])
 
+    elif transform_type == "medium-light":
+        return A.Compose([
+    A.Affine(scale=(0.93, 1.07), translate_percent=(0.03, 0.03), rotate=(-7, 7), p=0.65),  # More variation
+    A.VerticalFlip(p=0.4),
+    A.HorizontalFlip(p=0.4),
+    A.MotionBlur(blur_limit=5, p=0.1),
+    A.Sharpen(alpha=(0.1, 0.3), lightness=(0.4, 0.6), sigma=0.7, p=0.12),  # Reduced sharpening
+    A.CoarseDropout(num_holes_range=(2, 4), hole_height_range=(10, 20), hole_width_range=(10, 20), fill=0, p=0.08)  # More aggressive dropout
+    ])
+
     elif transform_type == "medium":
         return A.Compose([
             A.Affine(
@@ -44,6 +54,41 @@ def get_transforms(transform_type="light"):
                 fill=0, p=0.05
             )
         ])
+    
+    elif transform_type == "medium-best":
+        return A.Compose([
+    A.Affine(
+        scale=(0.94, 1.06),  # Légère augmentation de la variation
+        translate_percent=(0.025, 0.025),  # Un peu plus que Medium
+        rotate=(-6, 6),  # Rotation légèrement plus forte
+        p=0.65
+    ),
+    A.VerticalFlip(p=0.35),  # Légère augmentation
+    A.HorizontalFlip(p=0.45),  # Idem, plus équilibré
+    A.MotionBlur(blur_limit=3, p=0.06),  # Diminué légèrement pour éviter de flouter trop
+    A.Sharpen(alpha=(0.18, 0.38), lightness=(0.5, 0.7), p=0.13),  # Moins fort que High, mais plus que Medium
+    A.CoarseDropout(
+        num_holes_range=(2, 3),  # Augmenté pour plus de robustesse
+        hole_height_range=(10, 18),
+        hole_width_range=(10, 18),
+        fill=0, p=0.06
+    )
+    ])
+
+
+    elif transform_type == "medium-heavy":
+        return A.Compose([
+        A.Affine(scale=(0.95, 1.05), translate_percent=(0.02, 0.02), rotate=(-5, 5), p=0.6),
+        A.VerticalFlip(p=0.3),
+        A.HorizontalFlip(p=0.4),
+        A.MotionBlur(blur_limit=3, p=0.07),
+        A.Sharpen(alpha=(0.2, 0.4), lightness=(0.5, 0.7), p=0.15),
+        A.CoarseDropout(num_holes_range=(1, 2), hole_height_range=(8, 16), hole_width_range=(8, 16), fill=0, p=0.05),
+        A.GridDistortion(num_steps=5, distort_limit=0.03, p=0.1),  # ↑ Ajouté
+        A.ElasticTransform(alpha=1, sigma=50, alpha_affine=50, p=0.1),  # ↑ Ajouté
+        A.RandomBrightnessContrast(p=0.2)  # ↑ Ajouté
+    ])
+
 
     elif transform_type == "high":
         return A.Compose([

@@ -8,7 +8,7 @@ import torch
 import torch.nn
 import tqdm
 from torch.amp import GradScaler, autocast
-from sklearn.metrics import precision_recall_fscore_support
+import segmentation_models_pytorch as smp
 
 
 def generate_unique_logpath(logdir, raw_run_name):
@@ -126,75 +126,59 @@ def train(model, loader, f_loss, optimizer, device, dynamic_display=True):
 
 def test(model, loader, f_loss, device):
     """
-    Test a model over the loader
-    using the f_loss as metrics
-    Arguments :
+    Test a model over the loader using SMP metrics.
+
+    Arguments:
         model     -- A torch.nn.Module object
         loader    -- A torch.utils.data.DataLoader
         f_loss    -- The loss function, i.e. a loss Module
         device    -- A torch.device
 
-    Returns :
-        avg_loss     -- The average loss over the dataset
-        avg_f1       -- The F1-score computed over the dataset
+    Returns:
+        avg_loss      -- The average loss over the dataset
+        avg_f1        -- The F1-score computed over the dataset
         avg_precision -- The precision computed over the dataset
-        avg_recall   -- The recall computed over the dataset
+        avg_recall    -- The recall computed over the dataset
     """
-
-
-    # We enter eval mode.
-    # This is important for layers such as dropout, batchnorm, ...
+    
     model.eval()
+    total_loss, num_samples = 0, 0
 
-    total_loss = 0
-    num_samples = 0
-
-
-    # Running totals for precision, recall, F1
-    total_precision = 0
-    total_recall = 0
-    total_f1 = 0
-    num_batches = 0
+    # Initialize true positive, false positive, false negative, true negative
+    tp, fp, fn, tn = 0, 0, 0, 0
 
     with torch.inference_mode():
-        for (inputs, targets) in loader:
+        for inputs, targets in loader:
             inputs, targets = inputs.to(device), targets.to(device)
 
-            # Compute the forward propagation
+            # Forward pass
             outputs = model(inputs).squeeze(1)
             loss = f_loss(outputs, targets)
 
-            # Update the metrics
-            # We here consider the loss is batch normalized
+            # Compute loss sum
             total_loss += loss.item() * inputs.size(0)
             num_samples += inputs.size(0)
 
-            # Store predictions and targets for F1-score calculation
-            preds = (torch.sigmoid(outputs) > 0.5).int()  # Convert logits to binary predictions
+            # Convert logits to binary predictions
+            preds = (torch.sigmoid(outputs) > 0.5).int()
+            
+            targets = targets.int()  # Ajoute cette ligne
 
-            # Move tensors to CPU and convert to NumPy
-            preds_np = preds.cpu().numpy().flatten()
-            targets_np = targets.cpu().numpy().flatten()
-
-            # Debugging: Ensure binary values
-            assert set(preds_np).issubset({0, 1}), "Predictions contain non-binary values"
-            assert set(targets_np).issubset({0, 1}), "Targets contain non-binary values"
-
-            # Compute precision, recall, and F1 for the batch
-            precision, recall, f1, _ = precision_recall_fscore_support(
-                targets_np, preds_np, average="binary", zero_division=0
+            # Get stats for precision, recall, F1 computation
+            batch_tp, batch_fp, batch_fn, batch_tn = smp.metrics.get_stats(
+                preds, targets, mode='binary', threshold=0.5
             )
 
-            # Update running totals
-            total_precision += precision
-            total_recall += recall
-            total_f1 += f1
-            num_batches += 1
+            # Aggregate stats
+            tp += batch_tp.sum()
+            fp += batch_fp.sum()
+            fn += batch_fn.sum()
+            tn += batch_tn.sum()
 
+    # Compute final metrics
     avg_loss = total_loss / num_samples
-    avg_f1 = total_f1 / num_batches
-    avg_precision = total_precision / num_batches
-    avg_recall = total_recall / num_batches
-
+    avg_precision = smp.metrics.precision(tp, fp, fn, tn, reduction="micro")
+    avg_recall = smp.metrics.recall(tp, fp, fn, tn, reduction="micro")
+    avg_f1 = smp.metrics.f1_score(tp, fp, fn, tn, reduction="micro")
 
     return avg_loss, avg_f1, avg_precision, avg_recall

@@ -3,6 +3,7 @@
 # External imports
 import torch
 import torch.nn as nn
+import segmentation_models_pytorch as smp
 
 # local imports
 from . import losses
@@ -14,10 +15,12 @@ def get_loss(lossname: str, config_loss, device):
         return torch.nn.BCEWithLogitsLoss(pos_weight=pos_weight)
     
     elif lossname == "TverskyLoss":
-        alpha = config_loss.get("alpha", 0.3)
-        beta = config_loss.get("beta", 0.7)
-        return losses.TverskyLoss(alpha=alpha, beta=beta)
-    
+        alpha = config_loss.get("alpha", 0.6)
+        beta = config_loss.get("beta", 0.4)
+        return  smp.losses.TverskyLoss(mode="binary", alpha=alpha, beta=beta, from_logits=True)
+        #return losses.TverskyLoss(alpha=alpha, beta=beta)
+        #this loss is less efficient than the one in the smp library
+
     elif lossname == "FocalTverskyLoss":
         return losses.FocalTverskyLoss(
             alpha=config_loss.get("alpha", 0.3),
