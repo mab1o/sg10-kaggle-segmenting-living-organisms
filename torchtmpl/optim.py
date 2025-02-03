@@ -4,7 +4,10 @@
 import torch
 import torch.nn as nn
 import segmentation_models_pytorch as smp
-
+from torch.optim.lr_scheduler import (
+    StepLR, MultiStepLR, ExponentialLR, ReduceLROnPlateau,
+    CosineAnnealingLR, CosineAnnealingWarmRestarts
+)
 # local imports
 from . import losses
 
@@ -46,3 +49,22 @@ def get_optimizer(cfg, params):
     params_dict = cfg["params"]
     exec(f"global optim; optim = torch.optim.{cfg['algo']}(params, **params_dict)")
     return optim
+
+
+def get_scheduler(optimizer, config_scheduler):
+    """Retourne un scheduler PyTorch basé sur la config YAML."""
+    schedulers = {
+        "steplr": StepLR,
+        "multisteplr": MultiStepLR,
+        "exponentiallr": ExponentialLR,
+        "cosineannealinglr": CosineAnnealingLR,
+        "cosineannealingwarmrestarts": CosineAnnealingWarmRestarts
+    }
+
+    scheduler_name = config_scheduler.get("class", "").lower()
+    scheduler_params = config_scheduler.get("params", {})
+
+    if scheduler_name in schedulers:
+        return schedulers[scheduler_name](optimizer, **scheduler_params)
+    
+    raise ValueError(f"Scheduler {scheduler_name} not recognized.")

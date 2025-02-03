@@ -64,6 +64,12 @@ def train(config):
     logging.info("= Optimizer")
     optimizer = optim.get_optimizer(config["optim"], model.parameters())
 
+    # Build the scheduler
+    logging.info("= Scheduler")
+    scheduler = optim.get_scheduler(optimizer, config["scheduler"])
+
+
+
     # Build the logging directory
     logdir = pathlib.Path(utils.generate_unique_logpath(config["logging"]["logdir"], model_config["class"]))
     logdir.mkdir(parents=True, exist_ok=True)
@@ -118,6 +124,8 @@ def train(config):
         train_loss = utils.train(model, train_loader, loss, optimizer, device)
 
         test_loss, test_f1, test_precision, test_recall = utils.test(model, valid_loader, loss, device)
+
+        scheduler.step()  # fonctionnement du scheduler.
 
         # Mise à jour du checkpoint si meilleur F1-score
         updated = model_checkpoint.update(test_f1)
