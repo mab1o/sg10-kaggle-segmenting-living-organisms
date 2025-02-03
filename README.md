@@ -44,15 +44,48 @@ python -m torchtmpl.main config.yaml test_proba
 ```
 
 
-### Cluster experimentation (**not yet implemented**)
+### Cluster experimentation
 
 For running the code on a cluster, we provide an example script for starting an experimentation on a SLURM based cluster.
 The script we provide is dedicated to a use on our clusters and you may need to adapt it to your setting. 
 Then running the simulation can be as simple as :
 
+1. Connect to the frontal with SSH [🔗 Guide](https://dce.pages.centralesupelec.fr/03_connection/#using-visual-studio-code)  
+2. Commit your changes  
+3. Submit the job:
 ```bash
-python3 submit.py
+python3 submit-slurm.py {yaml_name}.yaml
 ```
+
+
+### Using the Ensemble Method
+
+#### **1. Ensure you have trained multiple models**
+Each trained model should be stored inside the `ensemble_models/` directory with the following structure:
+
+ensemble_models/
+│── Model_1/
+│   ├── best_model.pt
+│   ├── config.yaml
+│
+│── Model_2/
+│   ├── best_model.pt
+│   ├── config.yaml
+│
+│── Model_3/
+│   ├── best_model.pt
+│   ├── config.yaml
+
+#### **2. Run ensemble inference**
+```bash
+python3 -m torchtmpl.main ensemble.yaml sub_ensemble
+```
+
+#### **3. Submit the submission.csv file:**
+```bash
+kaggle competitions submit -c 3md4040-2025-challenge -f submission.csv -m "Message"
+```
+
 
 ## Project Structure
 

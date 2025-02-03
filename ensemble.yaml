@@ -1,0 +1,17 @@
+# Ensemble Learning Configuration
+data:
+  root_dir: '/mounts/Datasets3/2024-2025-ChallengePlankton/'
+  testpath: '/mounts/Datasets3/2024-2025-ChallengePlankton/test/'
+  patch_size: [256, 256]
+  batch_size: 32
+  num_workers: 8
+
+test:
+  ensemble_model_dir: "ensemble_models/"  # 📌 Charge tous les modèles de ce dossier
+  threshold: 0.5  # Seuil de binarisation des prédictions moyennes
+
+logging:
+  wandb:
+    project: "ChallengePlankton"
+    entity: "Random_Predictions_2"
+  logdir: "./logs"
