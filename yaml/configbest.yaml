@@ -21,7 +21,7 @@ scheduler:
   params:
     T_0: 3  # Meilleur warm-up
     T_mult: 2
-    eta_min: 1e-6
+    eta_min: 0.000001
 
 nepochs: 12  
 pos_weight: 1

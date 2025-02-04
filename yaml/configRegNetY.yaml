@@ -22,7 +22,7 @@ scheduler:
   params:
     T_0: 4
     T_mult: 2
-    eta_min: 1e-6
+    eta_min: 0.000001
 
 nepochs: 12  # Augmenté pour stabiliser l’apprentissage avec les nouvelles transfo
 pos_weight: 1

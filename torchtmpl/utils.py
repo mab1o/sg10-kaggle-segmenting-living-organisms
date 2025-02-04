@@ -2,6 +2,7 @@
 
 # Standard imports
 import os
+import datetime
 
 # External imports
 import torch
@@ -21,13 +22,20 @@ def generate_unique_logpath(logdir, raw_run_name):
         log_path: a non-existent path like logdir/raw_run_name_xxxx
                   where xxxx is an int
     """
+    # added timestamp because the previous logic was not working with batch jobs.
+    timestamp = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")  # AAAAMMJJ-HHMMSS
     i = 0
+
     while True:
-        run_name = raw_run_name + "_" + str(i)
+        run_name = f"{raw_run_name}_{i}_{timestamp}"  # Ex: "UnetPlusPlus_0_20240203-231530"
         log_path = os.path.join(logdir, run_name)
-        if not os.path.isdir(log_path):
+
+        if not os.path.isdir(log_path):  # Vérifie si le dossier existe déjà
+            os.makedirs(log_path, exist_ok=True)  # Création immédiate du dossier
+            print(f"Dossier choisi pour ce run : {log_path}")  # Affichage immédiat
             return log_path
-        i = i + 1
+        
+        i += 1  # Incrémente si le dossier existe déjà
 
 
 class ModelCheckpoint(object):

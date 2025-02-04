@@ -19,7 +19,7 @@ scheduler:
   class: CosineAnnealingLR
   params:
     T_max: 50
-    eta_min: 1e-6
+    eta_min: 0.000001
 
 nepochs: 50
 pos_weight: 1

@@ -20,7 +20,7 @@ scheduler:
   params:
     T_0: 4
     T_mult: 1
-    eta_min: 1e-6
+    eta_min: 0.000001
 
 nepochs: 10
 pos_weight: 1

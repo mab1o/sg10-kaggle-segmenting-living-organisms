@@ -3,7 +3,7 @@ data:
   root_dir: '/mounts/Datasets3/2024-2025-ChallengePlankton/'
   trainpath: '/mounts/Datasets3/2024-2025-ChallengePlankton/train/'
   testpath: '/mounts/Datasets3/2024-2025-ChallengePlankton/test/'
-  batch_size: 96  
+  batch_size: 64  
   num_workers: 8
   valid_ratio: 0.1
   patch_size: [256, 256]  
@@ -21,7 +21,7 @@ scheduler:
   params:
     T_0: 5  # Ajusté pour 20 epochs
     T_mult: 2
-    eta_min: !!float 1e-6
+    eta_min: 0.000001
 
 nepochs: 20  # Mis à jour pour 20 epochs
 pos_weight: 1
