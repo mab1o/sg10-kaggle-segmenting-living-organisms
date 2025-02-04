@@ -45,14 +45,15 @@ python -m pip install .
 echo "Training"
 python -m torchtmpl.main {configpath} train
 
-if [[ $? != 0 ]]; then
-    exit -1
-fi
-
 # Copie des logs vers le dossier logs/ du projet
 echo "Saving logs to project directory"
 mkdir -p ${{current_dir}}/logs
 rsync -r $TMPDIR/code/logs/ ${{current_dir}}/logs/
+
+if [[ $? != 0 ]]; then
+    exit -1
+fi
+
 """
 
 def submit_job(job):
