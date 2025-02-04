@@ -14,28 +14,24 @@ import segmentation_models_pytorch as smp
 
 def generate_unique_logpath(logdir, raw_run_name):
     """
-    Generate a unique directory name
-    Argument:
-        logdir: the prefix directory
-        raw_run_name(str): the base name
-    Returns:
-        log_path: a non-existent path like logdir/raw_run_name_xxxx
-                  where xxxx is an int
+    Generate a unique directory name ensuring logs are saved in the home directory.
     """
-    # added timestamp because the previous logic was not working with batch jobs.
+    # Ensure logdir is stored in HOME while keeping it relative in YAML
+    home_logdir = os.path.join(os.path.expanduser("~"), logdir)  # Expands ~/logs → /home/username/logs
+
     timestamp = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")  # AAAAMMJJ-HHMMSS
     i = 0
 
     while True:
-        run_name = f"{raw_run_name}_{i}_{timestamp}"  # Ex: "UnetPlusPlus_0_20240203-231530"
-        log_path = os.path.join(logdir, run_name)
+        run_name = f"{raw_run_name}_{i}_{timestamp}"  
+        log_path = os.path.join(home_logdir, run_name)  
 
-        if not os.path.isdir(log_path):  # Vérifie si le dossier existe déjà
-            os.makedirs(log_path, exist_ok=True)  # Création immédiate du dossier
-            print(f"Dossier choisi pour ce run : {log_path}")  # Affichage immédiat
+        if not os.path.isdir(log_path):
+            os.makedirs(log_path, exist_ok=True)
+            print(f"Dossier choisi pour ce run : {log_path}")
             return log_path
         
-        i += 1  # Incrémente si le dossier existe déjà
+        i += 1
 
 
 class ModelCheckpoint(object):

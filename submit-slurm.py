@@ -18,7 +18,7 @@ def makejob(commit_id, configpath, nruns):
 #SBATCH --error=logslurms/slurm-%A_%a.err
 #SBATCH --array=1-{nruns}
 
-current_dir=$(pwd)
+current_dir=`pwd`
 export PATH=$PATH:~/.local/bin
 
 echo "Session " ${{SLURM_ARRAY_JOB_ID}}_${{SLURM_ARRAY_TASK_ID}}
@@ -45,16 +45,11 @@ python -m pip install .
 echo "Training"
 python -m torchtmpl.main {configpath} train
 
-# Copie des logs vers le dossier logs/ du projet
-echo "Saving logs to project directory"
-mkdir -p ${{current_dir}}/logs
-rsync -r $TMPDIR/code/logs/ ${{current_dir}}/logs/
-
 if [[ $? != 0 ]]; then
     exit -1
 fi
-
 """
+
 
 def submit_job(job):
     with open("job.sbatch", "w") as fp:
