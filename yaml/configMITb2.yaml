@@ -16,9 +16,10 @@ optim:
     weight_decay: 0.0001
 
 scheduler:
-  class: CosineAnnealingLR
+  class: CosineAnnealingWarmRestarts
   params:
-    T_max: 50
+    T_0: 10  # Restart every 10 epochs
+    T_mult: 2
     eta_min: 0.000001
 
 nepochs: 50
@@ -26,8 +27,8 @@ pos_weight: 1
 
 loss:
   name: "TverskyLoss"
-  alpha: 0.6  # Optimisé pour préserver les détails fins
-  beta: 0.4
+  alpha: 0.55  # Optimisé pour préserver les détails fins
+  beta: 0.45
 
 logging:
   wandb:
