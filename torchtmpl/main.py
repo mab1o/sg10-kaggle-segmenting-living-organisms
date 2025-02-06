@@ -237,7 +237,14 @@ def test_proba(config):
         image = dataset_train[idx_img][0].unsqueeze(0).to(device)
 
         # Récupérer les probabilités
-        probs = model.predict_probs(image).half()
+        with torch.amp.autocast(device_type='cuda'), torch.inference_mode():
+            if 'segmentation_models_pytorch' in type(model).__module__:
+                # Cas segmentation_models_pytorch
+                logits = model(image)
+                probs = torch.sigmoid(logits).half()  # Convertit les logits en probabilités [0,1]
+            else:
+                probs = model.predict_probs(image).half()
+            
         dataset_train_proba.insert(probs)  # Stocke uniquement les probabilités dans ce dataset
 
     # Visualiser le mask de proba prédit vs le mask binaire réel
@@ -263,7 +270,7 @@ def sub(config):
     model_config = config["model"]
     model = models.build_model(model_config, input_size, num_classes)
     model.to(device)
-    model.load_state_dict(torch.load(model_name))
+    model.load_state_dict(torch.load(model_name, weights_only=True))
     model.eval()
 
     logging.info("= Predict masks for all test images")
