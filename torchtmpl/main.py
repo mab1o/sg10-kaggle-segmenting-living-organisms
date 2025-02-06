@@ -162,7 +162,7 @@ def test(config):
 
     logging.info("= Dataset")
     dataset_test = data.PlanktonDataset(
-        config['data']['trainpath'],config['data']['patch_size'],mode='test')
+        config['data']['testpath'],config['data']['patch_size'],mode='test')
     dataset_train = data.PlanktonDataset(
         config['data']['trainpath'],config['data']['patch_size'])
     input_size = tuple(dataset_train[0][0].shape)
@@ -176,7 +176,7 @@ def test(config):
     model_config = config["model"]
     model = models.build_model(model_config, input_size, num_classes)
     model.to(device)
-    model.load_state_dict(torch.load(model_name))
+    model.load_state_dict(torch.load(model_name, weights_only=True))
     model.eval()
 
     # Seconde partie de test: Utiliser les prédiction
@@ -189,13 +189,20 @@ def test(config):
     
     print(dataset_test.mask_files[0][0])
 
-    logging.info("= Reconstruct image")
+    #logging.info("= Reconstruct image")
     #dataset_test = alors qu'on veut comparer mask réel et image ??
-    data.show_image_mask_from(dataset_test,0,"image_reconstruct_1.png")
+    #data.show_image_mask_from(dataset_train,0,"image_reconstruct_1.png")
 
-    logging.info("= Compare masks")
+    #logging.info("= Compare masks")
     #data.show_mask_predict_compare_to_real(dataset_test,0,dataset_train,"compare_mask_1.png")
 
+    logging.info("= Compare validation image with predicted mask")
+    data.show_validation_image_vs_predicted_mask(
+        ds=dataset_test,            # Dataset contenant les masques prédits
+        idx=0,                      # Index de l'image à afficher
+        validation_dataset=dataset_test,  # Dataset avec l'image de validation
+        image_name="validation_vs_predicted_1.png"
+    )
 
 def test_proba(config):
     """Use for visualize and validate result with probability instead of binary prediction"""

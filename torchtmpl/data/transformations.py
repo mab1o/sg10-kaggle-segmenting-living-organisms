@@ -111,5 +111,43 @@ def get_transforms(transform_type="light"):
             ),
             A.GridDistortion(num_steps=5, distort_limit=0.03, p=0.1)  # Ajoute une légère déformation globale
         ])
+    
+
+
+    elif transform_type == "test_conservative":
+        A.Compose([
+            A.Affine(scale=(0.95, 1.05), translate_percent=(0.02, 0.02), rotate=(-5, 5), p=0.65),
+            A.VerticalFlip(p=0.4),
+            A.HorizontalFlip(p=0.5),
+            A.GaussianBlur(blur_limit=(1, 3), p=0.1),
+            A.RandomBrightnessContrast(brightness_limit=0.1, contrast_limit=0.1, p=0.2),
+            A.CoarseDropout(max_holes=2, max_height=15, max_width=15, fill_value=0, p=0.08),
+        ])
+
+
+    elif transform_type == "test_moderate":
+        A.Compose([
+            A.Affine(scale=(0.92, 1.08), translate_percent=(0.03, 0.03), rotate=(-8, 8), p=0.7),
+            A.VerticalFlip(p=0.5),
+            A.HorizontalFlip(p=0.5),
+            A.ElasticTransform(alpha=1, sigma=20, alpha_affine=10, p=0.2),
+            A.RandomBrightnessContrast(brightness_limit=0.15, contrast_limit=0.15, p=0.25),
+            A.GaussNoise(var_limit=(5.0, 25.0), p=0.15),
+            A.CoarseDropout(max_holes=3, max_height=20, max_width=20, fill_value=0, p=0.1),
+        ])
+
+
+    elif transform_type == "test_extreme":
+        A.Compose([
+            A.Affine(scale=(0.90, 1.10), translate_percent=(0.04, 0.04), rotate=(-12, 12), p=0.75),
+            A.VerticalFlip(p=0.55),
+            A.HorizontalFlip(p=0.55),
+            A.ElasticTransform(alpha=2, sigma=25, alpha_affine=15, p=0.3),
+            A.GridDistortion(num_steps=5, distort_limit=0.3, p=0.2),
+            A.RandomBrightnessContrast(brightness_limit=0.2, contrast_limit=0.2, p=0.3),
+            A.GaussNoise(var_limit=(10.0, 40.0), p=0.2),
+            A.CoarseDropout(max_holes=4, max_height=25, max_width=25, fill_value=0, p=0.15),
+        ])
+
     # Default to light if incorrect input
     return get_transforms("light")

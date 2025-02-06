@@ -207,3 +207,61 @@ def show_predicted_mask_proba_vs_real_mask_binary(
     plt.tight_layout()
     plt.savefig(image_name, bbox_inches="tight", dpi=300)
     logging.info(f"Saved probability vs real mask comparison to {image_name}")
+
+
+
+
+from PIL import Image
+Image.MAX_IMAGE_PIXELS = None  # désactive la limite de taille
+
+
+
+def show_validation_image_vs_predicted_mask(
+    ds: planktonds.PlanktonDataset,
+    idx: int,
+    validation_dataset: planktonds.PlanktonDataset,
+    image_name: str = "validation_vs_predicted.png"
+):
+    """
+    Compare the validation image with the predicted mask (probability heatmap) for a given index.
+
+    Args:
+        ds (PlanktonDataset): Dataset object containing the predicted probabilities.
+        idx (int): Index of the image to compare.
+        validation_dataset (PlanktonDataset): Dataset object containing the validation images.
+        image_name (str): File name to save the resulting figure.
+    """
+
+    # 1) Load the validation image
+    val_image_name = validation_dataset.image_files[idx]
+    print(f"Selected image = {val_image_name}")
+ 
+    val_image_path = os.path.join(
+        validation_dataset.image_mask_dir, 
+        validation_dataset.image_files[idx]
+    )
+
+    val_image = plt.imread(val_image_path)
+
+    # 2) Load the predicted mask (probability heatmap)
+    proba_mask = ds.reconstruct_mask(idx, binary=False)
+
+    # 3) Plot the validation image side by side with the predicted mask
+    plt.figure(figsize=(10, 5))
+
+    # (a) Validation image
+    plt.subplot(1, 2, 1)
+    plt.imshow(val_image, cmap="gray")
+    plt.title("Validation Image")
+    plt.axis("off")
+
+    # (b) Predicted probability heatmap
+    plt.subplot(1, 2, 2)
+    plt.imshow(proba_mask, cmap="viridis")
+    plt.title("Predicted Probabilities (Heatmap)")
+    plt.colorbar()
+    plt.axis("off")
+
+    plt.tight_layout()
+    plt.savefig(image_name, bbox_inches="tight", dpi=300)
+    logging.info(f"Saved validation vs predicted comparison to {image_name}")

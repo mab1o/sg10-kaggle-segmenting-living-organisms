@@ -213,7 +213,8 @@ class PlanktonDataset(Dataset):
                 # Apply binary thresholding if needed (for RegNetY or other models outputting logits)
                 if binary:
                     patch = (patch > 0.5).long()
-
+                if not binary:
+                    patch = torch.sigmoid(patch)
                 # Assign to the final reconstructed mask
                 reconstruct_mask[x_start:x_end, y_start:y_end] = patch[patch_x_start:, patch_y_start:]
 
