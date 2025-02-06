@@ -8,7 +8,7 @@ data:
   valid_ratio: 0.1
   patch_size: [256, 256]  
   quick_test: false
-  transform_type: "test_conservative"
+  transform_type: "test_moderate"
 
 optim:
   algo: AdamW
