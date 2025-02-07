@@ -3,10 +3,10 @@ data:
   root_dir: '/mounts/Datasets3/2024-2025-ChallengePlankton/'
   trainpath: '/mounts/Datasets3/2024-2025-ChallengePlankton/train/'
   testpath: '/mounts/Datasets3/2024-2025-ChallengePlankton/test/'
-  batch_size: 16  
+  batch_size: 4  
   num_workers: 8
   valid_ratio: 0.1
-  patch_size: [512, 512]  
+  patch_size: [1024, 1024]  
   quick_test: false
   transform_type: "medium-best"
 
