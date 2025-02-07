@@ -15,7 +15,8 @@ dependencies = [
     "scikit-learn>=1.2.2",
     "albumentations",
     "segmentation-models-pytorch>=0.3.2",
-    "kaggle>=1.6.17"
+    "kaggle>=1.6.17",
+    "ttach"
 ]
 
 [options]

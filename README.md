@@ -10,37 +10,37 @@ This project was developed as part of a [Kaggle challenge](https://www.kaggle.co
 
 1. Setting up the environment :
 
-    ```bash
-    python3 -m venv $TMPDIR/venv
-    source $TMPDIR/venv/bin/activate
-    python -m pip install .
-    ```
+```bash
+python3 -m venv $TMPDIR/venv
+source $TMPDIR/venv/bin/activate
+python -m pip install .
+```
 
 2. Run a training :
 
-    ```bash
-    python -m torchtmpl.main config.yaml train
-    ```
+```bash
+python -m torchtmpl.main yaml/config.yaml train
+```
 
 3. Create the submission.csv
 
-    ```bash
-    python -m torchtmpl.main config.yaml sub
-    ```
+```bash
+python -m torchtmpl.main yaml/config.yaml sub
+```
 
 4. Submit the submission.csv file:
 
-    ```bash
-    kaggle competitions submit -c 3md4040-2025-challenge -f submission.csv -m "Message"
-    ```
+```bash
+kaggle competitions submit -c 3md4040-2025-challenge -f submission.csv -m "Message"
+```
 
 5. Visualize the data and gain insights
 
 ```bash
-python -m torchtmpl.main config.yaml test
+python -m torchtmpl.main yaml/config.yaml test
 ```
 ```bash
-python -m torchtmpl.main config.yaml test_proba
+python -m torchtmpl.main yaml/config.yaml test_proba
 ```
 
 
@@ -86,6 +86,15 @@ python3 -m torchtmpl.main ensemble.yaml sub_ensemble
 kaggle competitions submit -c 3md4040-2025-challenge -f submission.csv -m "Message"
 ```
 
+### Using the Test-Time Augmentation
+
+You can use TTA by adding --tta to the end of the sub and sub_ensemble call.
+```bash
+python -m torchtmpl.main yaml/config.yaml sub --tta
+```
+```bash
+python3 -m torchtmpl.main ensemble.yaml sub_ensemble --tta
+```
 
 ## Project Structure
 

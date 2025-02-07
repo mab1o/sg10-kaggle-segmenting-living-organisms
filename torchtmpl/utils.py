@@ -10,6 +10,15 @@ import torch.nn
 import tqdm
 from torch.amp import GradScaler, autocast
 import segmentation_models_pytorch as smp
+import functools
+
+def amp_autocast(func):
+    """Décorateur pour exécuter une fonction avec autocast AMP"""
+    @functools.wraps(func)
+    def wrapper(*args, **kwargs):
+        with torch.amp.autocast(device_type="cuda"):
+            return func(*args, **kwargs)
+    return wrapper
 
 
 def generate_unique_logpath(logdir, raw_run_name):
@@ -127,7 +136,7 @@ def train(model, loader, f_loss, optimizer, device, dynamic_display=True):
         pbar.set_description(f"Train loss : {total_loss/num_samples:.4f}")
     return total_loss / num_samples
 
-
+@amp_autocast
 def test(model, loader, f_loss, device):
     """
     Test a model over the loader using SMP metrics.
