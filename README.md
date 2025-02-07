@@ -19,13 +19,13 @@ python -m pip install .
 2. Run a training :
 
 ```bash
-python -m torchtmpl.main yaml/config.yaml train
+python -m torchtmpl.main train_yaml/{yaml_name}.yaml train
 ```
 
 3. Create the submission.csv
 
 ```bash
-python -m torchtmpl.main yaml/config.yaml sub
+python -m torchtmpl.main inference.yaml sub
 ```
 
 4. Submit the submission.csv file:
@@ -37,10 +37,10 @@ kaggle competitions submit -c 3md4040-2025-challenge -f submission.csv -m "Messa
 5. Visualize the data and gain insights
 
 ```bash
-python -m torchtmpl.main yaml/config.yaml test
+python -m torchtmpl.main inference.yaml test
 ```
 ```bash
-python -m torchtmpl.main yaml/config.yaml test_proba
+python -m torchtmpl.main inference.yaml test_proba
 ```
 
 
@@ -50,11 +50,11 @@ For running the code on a cluster, we provide an example script for starting an 
 The script we provide is dedicated to a use on our clusters and you may need to adapt it to your setting. 
 Then running the simulation can be as simple as :
 
-1. Connect to the frontal with SSH [🔗 Guide](https://dce.pages.centralesupelec.fr/03_connection/#using-visual-studio-code)  
+1. Connect to the frontal with SSH [Guide](https://dce.pages.centralesupelec.fr/03_connection/#using-visual-studio-code)  
 2. Commit your changes  
 3. Submit the job:
 ```bash
-python3 submit-slurm.py {yaml_name}.yaml
+python3 submit-slurm.py train_yaml/{yaml_name}.yaml
 ```
 
 
@@ -78,7 +78,7 @@ ensemble_models/
 
 #### **2. Run ensemble inference**
 ```bash
-python3 -m torchtmpl.main ensemble.yaml sub_ensemble
+python3 -m torchtmpl.main inference.yaml sub_ensemble
 ```
 
 #### **3. Submit the submission.csv file:**
@@ -90,10 +90,10 @@ kaggle competitions submit -c 3md4040-2025-challenge -f submission.csv -m "Messa
 
 You can use TTA by adding --tta to the end of the sub and sub_ensemble call.
 ```bash
-python -m torchtmpl.main yaml/config.yaml sub --tta
+python -m torchtmpl.main inference.yaml sub --tta
 ```
 ```bash
-python3 -m torchtmpl.main ensemble.yaml sub_ensemble --tta
+python3 -m torchtmpl.main inference.yaml sub_ensemble --tta
 ```
 
 ## Project Structure

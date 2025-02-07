@@ -11,7 +11,7 @@ import yaml
 import wandb
 import torch
 import torchinfo.torchinfo as torchinfo
-import ttach as tta
+import argparse
 
 # Local imports
 from . import data
@@ -155,50 +155,37 @@ def train(config):
                 "test_F1": test_f1
             })
 
+
+
 @amp_autocast
 def test(config):
-    """Use for visualize and validate result with binary prediction"""
-    use_cuda = torch.cuda.is_available()
-    device = torch.device("cuda") if use_cuda else torch.device("cpu")
-    model_name = config['test']['model_path'] + config['test']['model_name']
-    config = yaml.safe_load(open(config['test']['model_path']+ config['test']['model_config'], "r"))
+    """Visualize and validate results with binary prediction"""
+    device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
+    model_path = os.path.join(config['test']['model_path'], config['test']['model_name'])
+
+    model_config = utils.load_model_config(config["test"])
 
     logging.info("= Dataset")
     dataset_test = data.PlanktonDataset(
         config['data']['testpath'],config['data']['patch_size'],mode='test')
-    dataset_train = data.PlanktonDataset(
-        config['data']['trainpath'],config['data']['patch_size'])
-    input_size = tuple(dataset_train[0][0].shape)
-    print ("="*90, input_size)
+    logging.info(f"  -  Number of test samples: {len(dataset_test)}")
+
+    input_size = tuple(dataset_test[0].shape)
     num_classes = input_size[0]
 
-    logging.info(f"  -  Number of test samples: {len(dataset_test)}")
-    logging.info(f"  -  Number of train samples: {len(dataset_train)}")
-
     logging.info("= Model")
-    model_config = config["model"]
-    model = models.build_model(model_config, input_size, num_classes)
-    model.to(device)
-    model.load_state_dict(torch.load(model_name, weights_only=True))
-    model.eval()
+    model = utils.build_and_load_model(model_config, input_size, num_classes, model_path, device)
 
     # Seconde partie de test: Utiliser les prédiction
     logging.info("= Predict first image")
     with torch.inference_mode():
         for idx_img in range(dataset_test.image_patches[0][0]*dataset_test.image_patches[0][1]):
             if(idx_img % 400 == 0):
-                logging.info(f"  - predict mask {idx_img}")
+                logging.info(f"  - Predicting mask {idx_img}")
             image = dataset_test[idx_img].unsqueeze(0).to(device)
             dataset_test.insert(model.predict(image))
     
     print(dataset_test.mask_files[0][0])
-
-    #logging.info("= Reconstruct image")
-    #dataset_test = alors qu'on veut comparer mask réel et image ??
-    #data.show_image_mask_from(dataset_train,0,"image_reconstruct_1.png")
-
-    #logging.info("= Compare masks")
-    #data.show_mask_predict_compare_to_real(dataset_test,0,dataset_train,"compare_mask_1.png")
 
     logging.info("= Compare validation image with predicted mask")
     data.show_validation_image_vs_predicted_mask(
@@ -208,32 +195,40 @@ def test(config):
         image_name="validation_vs_predicted_1.png"
     )
 
+    # ---- Extra Evaluation Functions (using dataset_train) ----
+    if config['test'].get("use_train", False):
+        logging.info("= Extra evaluation using training data")
+        dataset_train = data.PlanktonDataset(config['data']['trainpath'], config['data']['patch_size'])
+        logging.info(f"  - Number of train samples: {len(dataset_train)}")
+        # For example, reconstruct image from training data or compare predicted mask vs real mask:
+        logging.info("= Reconstruct image from training data")
+        data.show_image_mask_from(dataset_train, 0, "image_reconstruct_1.png")
+        logging.info("= Compare predicted mask to real mask")
+        data.show_mask_predict_compare_to_real(dataset_test, 0, dataset_train, "compare_mask_1.png")
+    # ---------------------------------------------------------
+
+
 @amp_autocast
 def test_proba(config):
-    """Use for visualize and validate result with probability instead of binary prediction"""
-    use_cuda = torch.cuda.is_available()
-    device = torch.device("cuda") if use_cuda else torch.device("cpu")
-    model_name = config['test']['model_path'] + config['test']['model_name']
-    config = yaml.safe_load(open(config['test']['model_path']+ config['test']['model_config'], "r"))
+    """Visualize and validate results with binary prediction"""
+    device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
+    model_path = os.path.join(config['test']['model_path'], config['test']['model_name'])
+
+    model_config = utils.load_model_config(config["test"])
 
     logging.info("= Dataset")
     dataset_test = data.PlanktonDataset(
         config['data']['testpath'],config['data']['patch_size'],mode='test')
+    logging.info(f"  -  Number of test samples: {len(dataset_test)}")
     dataset_train = data.PlanktonDataset(
         config['data']['trainpath'],config['data']['patch_size'])
-    input_size = tuple(dataset_train[0][0].shape)
-    print ("="*90, input_size)
-    num_classes = input_size[0]
-
-    logging.info(f"  -  Number of test samples: {len(dataset_test)}")
     logging.info(f"  -  Number of train samples: {len(dataset_train)}")
 
+    input_size = tuple(dataset_test[0].shape)
+    num_classes = input_size[0]
+
     logging.info("= Model")
-    model_config = config["model"]
-    model = models.build_model(model_config, input_size, num_classes)
-    model.to(device)
-    model.load_state_dict(torch.load(model_name, weights_only=True))
-    model.eval()
+    model = utils.build_and_load_model(model_config, input_size, num_classes, model_path, device)
 
     # Seconde partie de test_with_proba: mask de proba prédit vs le mask binaire réel
     # or seul dataset_train à des masks binaire réels.
@@ -249,77 +244,59 @@ def test_proba(config):
                 logging.info(f"  - Predicting probabilities for mask {idx_img}")
             image = dataset_train[idx_img][0].unsqueeze(0).to(device)
 
-            # Récupérer les probabilités
             if 'segmentation_models_pytorch' in type(model).__module__:
                 # Cas segmentation_models_pytorch
                 logits = model(image)
-                probs = torch.sigmoid(logits).half()  # Convertit les logits en probabilités [0,1]
+                probs = torch.sigmoid(logits).half()
             else:
                 probs = model.predict_probs(image).half()
             
-            dataset_train_proba.insert(probs)  # Stocke uniquement les probabilités dans ce dataset
+            dataset_train_proba.insert(probs)  
 
     # Visualiser le mask de proba prédit vs le mask binaire réel
     # et calcule le meilleur seuil pour obtenir le plus grand F1-score
     logging.info("= Show probabilities and compare to real masks")
     data.show_predicted_mask_proba_vs_real_mask_binary(dataset_train_proba, 0, dataset_train, "proba_compared_real_1.png")
 
+
 @amp_autocast
 def sub(config, use_tta=False):
-    use_cuda = torch.cuda.is_available()
-    device = torch.device("cuda") if use_cuda else torch.device("cpu")
-    model_name = config['test']['model_path'] + config['test']['model_name']
-    config = yaml.safe_load(open(config['test']['model_path']+ config['test']['model_config'], "r"))
+    device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
+    model_path = os.path.join(config['test']['model_path'], config['test']['model_name'])
+
+    model_config = utils.load_model_config(config["test"])
 
     logging.info("= Dataset")
-    dataset_test = data.PlanktonDataset(
-        config['data']['testpath'],config['data']['patch_size'],mode='test')
+    dataset_test = data.PlanktonDataset(config['data']['testpath'],config['data']['patch_size'],mode='test')
+    logging.info(f"  -  number of sample: {len(dataset_test)}")
     input_size = tuple(dataset_test[0].shape)
     num_classes = input_size[0]
-    logging.info(f"  -  number of sample: {len(dataset_test)}")
 
     logging.info("= Model")
-    model_config = config["model"]
-    model = models.build_model(model_config, input_size, num_classes)
-    model.to(device)
-    model.load_state_dict(torch.load(model_name, weights_only=True))
-    model.eval()
+    model = utils.build_and_load_model(model_config, input_size, num_classes, model_path, device)
+
+    apply_sigmoid = model_config['encoder']['model_name'] == "timm-regnety_032"
 
     # Activation de TTA uniquement si use_tta est True
     if use_tta:
-        logging.info(" Test-Time Augmentation (TTA) ACTIVÉ")
-        tta_transforms = tta.Compose([
-            tta.HorizontalFlip(),
-            tta.VerticalFlip(),
-            tta.Rotate90(angles=[0, 90, 180, 270])
-        ])
-        tta_model = tta.SegmentationTTAWrapper(model, tta_transforms)
-    else:
-        logging.info(" Test-Time Augmentation (TTA) DÉSACTIVÉ")
-        tta_model = model  # Utilise le modèle normal sans TTA
-
+        model = utils.apply_tta(model, use_tta)
 
     logging.info("= Predict masks for all test images")
     for image_idx, (num_patches_x, num_patches_y) in enumerate(dataset_test.image_patches):
         logging.info(f"Predicting patches for image {image_idx}")
+        base_idx = sum(x * y for x, y in dataset_test.image_patches[:image_idx])  # Precompute base index
+
         for idx_patch in range(num_patches_x * num_patches_y):
-            global_idx = idx_patch + sum(
-                x * y for x, y in dataset_test.image_patches[:image_idx]
-            )  # Calcul de l'index global
+            global_idx = base_idx + idx_patch
             image = dataset_test[global_idx].unsqueeze(0).to(device)
             
-            # Prédiction avec TTA   TTA renovie une sortie sous la meme forme que le modèle d'origine
             with torch.inference_mode():
-                prediction = tta_model(image)
-
-            #prediction = model.predict(image)
-            prediction = prediction.squeeze(0)  # Supprime la dimension batch si nécessaire
+                prediction = model(image).squeeze(0)
 
             # Apply sigmoid + threshold only for RegNetY models because it ouputs logits
             threshold = 0.5
-            if config['model']['encoder']['model_name'] == "timm-regnety_032":
+            if apply_sigmoid:
                 prediction = torch.sigmoid(prediction)
-
             pred_binaire = (prediction > threshold).int() 
             dataset_test.insert(pred_binaire)
 
@@ -332,9 +309,7 @@ def sub(config, use_tta=False):
 @amp_autocast
 def sub_ensemble(config):
     """Effectue une prédiction par ensemble de modèles"""
-    
-    use_cuda = torch.cuda.is_available()
-    device = torch.device("cuda" if use_cuda else "cpu")
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     logging.info("= Dataset")
     dataset_test = data.PlanktonDataset(
@@ -362,19 +337,17 @@ def sub_ensemble(config):
         config_path = os.path.join(os.path.dirname(model_path), "config.yaml")
         logging.info(f"Loading model: {model_path} with config: {config_path}")
 
-        if not os.path.exists(config_path):
-            logging.error(f"⚠️ Missing config.yaml for {model_path}, skipping...")
-            continue
-
         # Charger la configuration du modèle
         with open(config_path, "r") as f:
-            model_config = yaml.safe_load(f)["model"]
+            model_data = yaml.safe_load(f)
+        model_config = model_data["model"]
 
         # Construire et charger le modèle
-        model = models.build_model(model_config, input_size, num_classes)
-        model.to(device)
-        model.load_state_dict(torch.load(model_path, map_location=device))
-        model.eval()
+        model = utils.build_and_load_model(model_config, input_size, num_classes, model_path, device)
+
+        if use_tta:
+            model = utils.apply_tta(model, use_tta)
+            
         models_list.append(model)
 
     if not models_list:
@@ -410,7 +383,6 @@ def sub_ensemble(config):
     logging.info("Ensemble submission saved successfully!")
 
 
-import argparse
 
 
 

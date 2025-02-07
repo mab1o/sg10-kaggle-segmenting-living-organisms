@@ -1,14 +1,14 @@
-# YOAT GOAT Edition - Optimized for EfficientNetB5
+# YOAT GOAT Edition - Optimized for EfficientNetB4
 data:
   root_dir: '/mounts/Datasets3/2024-2025-ChallengePlankton/'
   trainpath: '/mounts/Datasets3/2024-2025-ChallengePlankton/train/'
   testpath: '/mounts/Datasets3/2024-2025-ChallengePlankton/test/'
-  batch_size: 54  # B5 est plus lourd, batch réduit pour éviter OOM
+  batch_size: 64  
   num_workers: 8
   valid_ratio: 0.1
   patch_size: [256, 256]  
   quick_test: false
-  transform_type: "medium-best"
+  transform_type: "test_extreme"
 
 optim:
   algo: AdamW
@@ -19,11 +19,11 @@ optim:
 scheduler:
   class: CosineAnnealingWarmRestarts
   params:
-    T_0: 6  # Ajusté pour 25 epochs
+    T_0: 5  # Ajusté pour 20 epochs
     T_mult: 2
     eta_min: 0.000001
 
-nepochs: 25  # Ajusté pour B5
+nepochs: 20  # Mis à jour pour 20 epochs
 pos_weight: 1
 
 loss:
@@ -40,13 +40,8 @@ logging:
 model:
   class: UnetPlusPlus  
   encoder:
-    model_name: "tu-efficientnet_b5"  # Passage à B5
+    model_name: "tu-efficientnet_b4"  # Format correct pour SMP
   decoder_attention_type: "scse"
 
 # Désactiver si pas de ré-entrainement
 # pretrained_model: "logs/UNet_10/best_model.pt"
-
-test:
-  model_path: 'logs/EfficientNetV2-M/'
-  model_name: 'best_model.pt'
-  model_config: 'config.yaml'

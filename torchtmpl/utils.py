@@ -3,6 +3,7 @@
 # Standard imports
 import os
 import datetime
+import logging
 
 # External imports
 import torch
@@ -11,6 +12,8 @@ import tqdm
 from torch.amp import GradScaler, autocast
 import segmentation_models_pytorch as smp
 import functools
+from . import models
+import yaml
 
 def amp_autocast(func):
     """Décorateur pour exécuter une fonction avec autocast AMP"""
@@ -195,3 +198,38 @@ def test(model, loader, f_loss, device):
     avg_f1 = smp.metrics.f1_score(tp, fp, fn, tn, reduction="micro")
 
     return avg_loss, avg_f1, avg_precision, avg_recall
+
+
+
+
+def load_model_config(test_config):
+    model_config_path = os.path.join(test_config["model_path"], test_config["model_config"])
+    logging.info(f"Loading model configuration from: {model_config_path}")
+    with open(model_config_path, "r") as f:
+        return yaml.safe_load(f)["model"]
+
+def build_and_load_model(model_config, input_size, num_classes, model_path, device):
+    model = models.build_model(model_config, input_size, num_classes)
+    model.to(device)
+    model.load_state_dict(torch.load(model_path, map_location=device, weights_only=True))
+    model.eval()
+    return model
+
+
+def apply_tta(model, use_tta):
+    """
+    Wrap the model with TTA if use_tta is True.
+    """
+    import ttach as tta
+
+    if use_tta:
+        logging.info("Test-Time Augmentation (TTA) ACTIVÉ")
+        tta_transforms = tta.Compose([
+            tta.HorizontalFlip(),
+            tta.VerticalFlip(),
+            tta.Rotate90(angles=[0, 90, 180, 270])
+        ])
+        return tta.SegmentationTTAWrapper(model, tta_transforms)
+    else:
+        logging.info("Test-Time Augmentation (TTA) DÉSACTIVÉ")
+        return model

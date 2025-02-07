@@ -42,8 +42,3 @@ model:
   decoder_segmentation_channels: 256
   in_channels: 1
   classes: 1
-
-test:
-  model_path: 'logs/SegFormer_SwinV2-Small/'
-  model_name: 'best_model.pt'
-  model_config: 'config.yaml'

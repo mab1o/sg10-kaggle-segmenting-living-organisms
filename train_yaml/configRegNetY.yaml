@@ -1,36 +1,37 @@
-# YOAT GOAT Edition - Optimized for EfficientNetB4
+# YOAT GOAT Edition - Optimized
 data:
   root_dir: '/mounts/Datasets3/2024-2025-ChallengePlankton/'
   trainpath: '/mounts/Datasets3/2024-2025-ChallengePlankton/train/'
   testpath: '/mounts/Datasets3/2024-2025-ChallengePlankton/test/'
-  batch_size: 64  
+  batch_size: 128 #64 takes 10 GB of VRAM  
   num_workers: 8
   valid_ratio: 0.1
   patch_size: [256, 256]  
   quick_test: false
-  transform_type: "test_extreme"
+  transform_type: "medium" #none, light, medium, high
+
 
 optim:
   algo: AdamW
   params:
-    lr: 0.001  
-    weight_decay: 0.001  # Moins de régularisation pour ne pas freiner l'apprentissage
+    lr: 0.0015   # Possible augmentation à 0.0015 pour ConvNeXt
+    weight_decay: 0.0007  # Éviter overfitting
 
 scheduler:
   class: CosineAnnealingWarmRestarts
   params:
-    T_0: 5  # Ajusté pour 20 epochs
+    T_0: 4
     T_mult: 2
     eta_min: 0.000001
 
-nepochs: 20  # Mis à jour pour 20 epochs
+nepochs: 12  # Augmenté pour stabiliser l’apprentissage avec les nouvelles transfo
 pos_weight: 1
 
 loss:
   name: "TverskyLoss"
-  alpha: 0.6
+  alpha: 0.6 
   beta: 0.4
-
+  
 logging:
   wandb:
     project: "ChallengePlankton"
@@ -38,15 +39,10 @@ logging:
   logdir: "./logs"
 
 model:
-  class: UnetPlusPlus  
+  class: Unet  # Unet avec RegNetY comme encodeur
   encoder:
-    model_name: "tu-efficientnet_b4"  # Format correct pour SMP
-  decoder_attention_type: "scse"
+    model_name: timm-regnety_032  # RegNetY-3.2GF, supporté par SMP
 
 # Désactiver si pas de ré-entrainement
-# pretrained_model: "logs/UNet_10/best_model.pt"
-
-test:
-  model_path: 'logs/EfficientNetV2-M/'
-  model_name: 'best_model.pt'
-  model_config: 'config.yaml'
+#pretrained_model: "logs/UNet_10/best_model.pt"
+#current best is UNet_10.
