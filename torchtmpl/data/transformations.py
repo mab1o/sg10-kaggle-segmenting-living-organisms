@@ -1,5 +1,4 @@
 import albumentations as A
-from albumentations.pytorch import ToTensorV2
 
 def get_transforms(transform_type="light"):
     """

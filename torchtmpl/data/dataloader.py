@@ -5,7 +5,6 @@ import random
 # External imports
 import torch
 import torch.utils.data
-import albumentations as A
 
 # Local imports
 from . import planktonds

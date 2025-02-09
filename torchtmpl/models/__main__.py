@@ -50,7 +50,6 @@ def test_unet():
 
 def test_efficientnet_b3_segmentation():
     import torch
-    from timm import create_model
     from efficientnet_b3_segmentation import EfficientNetB3Segmentation  # Ensure your class is named and imported correctly
 
     logging.info("Testing EfficientNet-B3 Segmentation")

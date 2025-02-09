@@ -1,11 +1,9 @@
+# External imports
 import matplotlib.pyplot as plt
 import albumentations as A
 
-import importlib
-import torchtmpl.data.planktonds
-importlib.reload(torchtmpl.data.planktonds)
-
-from torchtmpl.data import PlanktonDataset
+# Local imports
+from torchtmpl.data.planktonds import PlanktonDataset
 
 train_transform = A.Compose([
     A.VerticalFlip(p=0.5),

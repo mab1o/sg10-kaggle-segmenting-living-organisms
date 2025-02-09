@@ -5,10 +5,13 @@ import os
 import torch
 import logging
 from sklearn.metrics import f1_score
+from PIL import Image
 
 # Local imports
 from . import patch
 from . import planktonds
+
+Image.MAX_IMAGE_PIXELS = None  # désactive la limite de taille
 
 def _show_image_mask_given(img, mask, image_name="plankton_sample.png"):
     """
@@ -209,10 +212,6 @@ def show_predicted_mask_proba_vs_real_mask_binary(
     logging.info(f"Saved probability vs real mask comparison to {image_name}")
 
 
-
-
-from PIL import Image
-Image.MAX_IMAGE_PIXELS = None  # désactive la limite de taille
 
 
 

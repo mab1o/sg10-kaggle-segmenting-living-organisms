@@ -2,11 +2,9 @@
 
 # External imports
 import torch
-import torch.nn as nn
 import segmentation_models_pytorch as smp
 from torch.optim.lr_scheduler import (
-    StepLR, MultiStepLR, ExponentialLR, ReduceLROnPlateau,
-    CosineAnnealingLR, CosineAnnealingWarmRestarts
+    StepLR, MultiStepLR, ExponentialLR, CosineAnnealingLR, CosineAnnealingWarmRestarts
 )
 # local imports
 from . import losses
@@ -46,9 +44,8 @@ def get_loss(lossname: str, config_loss, device):
 
 
 def get_optimizer(cfg, params):
-    params_dict = cfg["params"]
-    exec(f"global optim; optim = torch.optim.{cfg['algo']}(params, **params_dict)")
-    return optim
+    optimizer_class = getattr(torch.optim, cfg["algo"])  # Récupère la classe Adam, SGD, etc.
+    return optimizer_class(params, **cfg["params"])  # Instancie l'optimiseur
 
 
 def get_scheduler(optimizer, config_scheduler):

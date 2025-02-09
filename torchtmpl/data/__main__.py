@@ -111,7 +111,7 @@ def test_encoder():
             logging.error(f"{binary} has been incorrectly encode to {result} instead of {expected_result}.")
     logging.info("=== End of Test: Encoder ===")
 
-def test_reconstruct_image(config):
+def test_reconstruct_image(config, original=False):
     """Test image reconstruction."""
     logging.info("\n=== Test: Image Reconstruction ===")
 
@@ -119,12 +119,13 @@ def test_reconstruct_image(config):
     patch_size = (10000, 10000)
     dataset = planktonds.PlanktonDataset(dir_path, patch_size)
 
-    logging.info("Displaying the original image...")
-    img = patch.extract_patch_from_ppm(
-        dir_path + dataset.image_files[1], 0, 0, dataset.images_size[1])
-    mask = patch.extract_patch_from_ppm(
-        dir_path + dataset.mask_files[1], 0, 0, dataset.images_size[1])
-    # visualization._show_image_mask_given(img, mask, "test_reconstruct_original_image_1")
+    if original:
+        logging.info("Displaying the original image...")
+        img = patch.extract_patch_from_ppm(
+            dir_path + dataset.image_files[1], 0, 0, dataset.images_size[1])
+        mask = patch.extract_patch_from_ppm(
+            dir_path + dataset.mask_files[1], 0, 0, dataset.images_size[1])
+        visualization._show_image_mask_given(img, mask, "test_reconstruct_original_image_1")
 
     logging.info("Displaying the reconstructed image...")
     visualization.show_image_mask_from(dataset,1, "test_reconstruct_image")
@@ -169,7 +170,7 @@ def test_PlanktonDataset_test(config):
         except Exception as e:
             logging.info(f"Error at index {i}: {e}")
 
-    logging.info(f"Impression de l'image reconstruite")
+    logging.info("Impression de l'image reconstruite")
     visualization.show_mask_predict_compare_to_real(ds_test,0, ds_train,"test_planktondataset_test")
 
     logging.info("=== End of Test: PlanktonDataset (Test) ===")

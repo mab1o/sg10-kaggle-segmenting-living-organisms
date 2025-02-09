@@ -1,16 +1,18 @@
 # coding: utf-8
 
 # External imports
-import torch
-
-# Local imports
-from .base_models import *
-from .cnn_models import *
-from .unet import *
-from .efficientnet_b3_segmentation import *
-#from .unet_convnext import *
 import segmentation_models_pytorch as smp
 
+# Local imports
+from .cnn_models import VanillaCNN
+from .unet import UNet
+from .efficientnet_b3_segmentation import EfficientNetB3Segmentation
+
+CUSTOM_MODELS = {
+    "VanillaCNN": VanillaCNN,
+    "UNet": UNet,
+    "EfficientNetB3Segmentation": EfficientNetB3Segmentation
+}
 
 
 # List of valid segmentation models in SMP
@@ -27,9 +29,9 @@ SMP_MODELS = {
 }
 
 def build_model(cfg, input_size, num_classes):
-
     model_class = cfg['class']
     encoder_name = cfg['encoder']['model_name']
+    patch_size = cfg['patch_size'][0]
 
     # Validate if the model exists in SMP
     if model_class in SMP_MODELS:
@@ -46,7 +48,7 @@ def build_model(cfg, input_size, num_classes):
         
         # Ajout spécifique pour SegFormer
         if model_class == "Segformer":
-            model_params["decoder_segmentation_channels"] = 256
+            model_params["decoder_segmentation_channels"] = patch_size
 
         return SMP_MODELS[model_class](**model_params)
 
@@ -56,5 +58,8 @@ def build_model(cfg, input_size, num_classes):
         input_channels=input_size[0], 
         num_classes=num_classes
     )
-    
-    return eval(f"{cfg['class']}(cfg, input_size, num_classes)")
+
+    if model_class in CUSTOM_MODELS:
+        return CUSTOM_MODELS[model_class](cfg, input_size, num_classes)
+
+    raise ValueError(f"Modèle inconnu : {model_class}")

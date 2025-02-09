@@ -140,7 +140,7 @@ class PlanktonDataset(Dataset):
             idx (int): index of where the patches is added
         """
         assert self.mode == 'test', "Dataset must be a test dataset to insert a patch"
-        if idx == None :
+        if idx is None :
             self.mask_files.append(mask_patch)
         else :
             assert 0 <= idx < len(self), "Index out of range: {idx}"
