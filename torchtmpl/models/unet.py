@@ -43,9 +43,11 @@ class TimmEncoder(nn.Module):
 class DecoderBlock(nn.Module):
     def __init__(self, cin):
         super().__init__()
-        self.conv1 = nn.Sequential(*conv_relu_bn(cin,cin))
-        self.up_conv = nn.Sequential(nn.Upsample(scale_factor=2), *conv_relu_bn(cin, cin // 2))
-        self.conv2 = nn.Sequential(*conv_relu_bn(cin,cin//2))
+        self.conv1 = nn.Sequential(*conv_relu_bn(cin, cin))
+        self.up_conv = nn.Sequential(
+            nn.Upsample(scale_factor=2), *conv_relu_bn(cin, cin // 2)
+        )
+        self.conv2 = nn.Sequential(*conv_relu_bn(cin, cin // 2))
 
     def forward(self, x, f_encoder):
         x = self.conv1(x)
@@ -104,7 +106,7 @@ class UNet(nn.Module):
         out, features = self.encoder(X)
         prediction = self.decoder(out, features)
         return prediction
-    
+
     def predict(self, X, threshold=0.5):
         self.eval()
         with torch.no_grad():
@@ -119,7 +121,6 @@ class UNet(nn.Module):
             logits = self.forward(X)
             probs = torch.sigmoid(logits)
             return probs
-
 
 
 def test_timm():
@@ -164,5 +165,5 @@ def test_unet():
 
 
 if __name__ == "__main__":
-    #test_timm()
+    # test_timm()
     test_unet()

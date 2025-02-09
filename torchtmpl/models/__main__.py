@@ -31,6 +31,7 @@ def test_cnn():
     output = model(input_tensor)
     print(f"Output tensor of size : {output.shape}")
 
+
 def test_unet():
     logging.info("Testing UNet")
     cin = 1
@@ -38,7 +39,11 @@ def test_unet():
     num_classes = 2
     X = torch.zeros((1, *input_size))
     cfg = {"class": "UNet", "encoder": {"model_name": "resnet18"}}
-    model = build_model(cfg,input_size,num_classes,)
+    model = build_model(
+        cfg,
+        input_size,
+        num_classes,
+    )
 
     model.eval()
     y = model(X)
@@ -47,10 +52,11 @@ def test_unet():
     assert y.shape == (1, num_classes, input_size[1], input_size[2])
 
 
-
 def test_efficientnet_b3_segmentation():
     import torch
-    from efficientnet_b3_segmentation import EfficientNetB3Segmentation  # Ensure your class is named and imported correctly
+    from efficientnet_b3_segmentation import (
+        EfficientNetB3Segmentation,
+    )  # Ensure your class is named and imported correctly
 
     logging.info("Testing EfficientNet-B3 Segmentation")
     input_channels = 1  # Number of input channels (e.g., grayscale = 1, RGB = 3)
@@ -58,7 +64,9 @@ def test_efficientnet_b3_segmentation():
     num_classes = 1  # Binary segmentation (adjust if needed)
 
     # Instantiate the model
-    model = EfficientNetB3Segmentation(input_channels=input_channels, num_classes=num_classes)
+    model = EfficientNetB3Segmentation(
+        input_channels=input_channels, num_classes=num_classes
+    )
 
     # Set the model to evaluation mode
     model.eval()
@@ -76,11 +84,13 @@ def test_efficientnet_b3_segmentation():
     print(f"Output shape: {y.shape}")
 
     # Assert that the output shape matches the expected size
-    assert y.shape == (batch_size, num_classes, input_size[1], input_size[2]), \
+    assert y.shape == (batch_size, num_classes, input_size[1], input_size[2]), (
         "Output shape does not match expected shape!"
+    )
+
 
 if __name__ == "__main__":
     # test_linear()
     # test_cnn()
-    #test_unet()
+    # test_unet()
     test_efficientnet_b3_segmentation()

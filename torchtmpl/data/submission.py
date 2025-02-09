@@ -2,7 +2,12 @@ import numpy as np
 import torch
 from typing import List
 
-def generate_submission_file(predictions : List[torch.Tensor], ordered_files : List[str], file_name = "submission.csv"):
+
+def generate_submission_file(
+    predictions: List[torch.Tensor],
+    ordered_files: List[str],
+    file_name="submission.csv",
+):
     """
     Generate the CSV file for kaggle submission
     Args :
@@ -10,19 +15,21 @@ def generate_submission_file(predictions : List[torch.Tensor], ordered_files : L
         ordered_files (array of string): table of the name of the files
         file_name (string): name of the submission file
     """
-    assert len(ordered_files) == len(predictions), "The list of file name must be the same size as the list of prediction"
+    assert len(ordered_files) == len(predictions), (
+        "The list of file name must be the same size as the list of prediction"
+    )
 
     with open(file_name, "w") as f:
         f.write("Id,Target\n")
 
         # Let us generate the predictions file for 2 images
         for mask_id, mask_file_name in enumerate(ordered_files):
-            
             # Iteratate over the rows of the prediction
             for idx_row, row in enumerate(predictions[mask_id]):
                 row = row.cpu().numpy().astype(int)
                 row_str = array_to_string(row)
-                f.write(f"{mask_file_name}_{idx_row},\"{row_str}\"\n")
+                f.write(f'{mask_file_name}_{idx_row},"{row_str}"\n')
+
 
 def binary_list_to_string(binary_list, num_bits=6, offset=48):
     """
@@ -62,7 +69,7 @@ def array_to_string(arr: np.array, num_bits=6, offset=48):
     """
     raveled = list(arr.ravel())
     # Pad the raveled sequence by 0's to have a size multiple of num_bits
-    raveled.extend([0] * ((num_bits - (len(raveled) % num_bits))))
+    raveled.extend([0] * (num_bits - (len(raveled) % num_bits)))
     result = binary_list_to_string(raveled, num_bits, offset)
     return result
 
@@ -87,10 +94,12 @@ def generate_sample_files(img_height, img_width):
             # Iteratate over the rows of the prediction
             for idx_row, row in enumerate(prediction):
                 mystr = array_to_string(row)
-                f.write(f"{mask_id}_{idx_row},\"{mystr}\"\n")
+                f.write(f'{mask_id}_{idx_row},"{mystr}"\n')
 
 
-def generate_sample_files_unbalanced(img_height, img_width, proportion_zeros=0.9844, proportion_ones=0.0156):
+def generate_sample_files_unbalanced(
+    img_height, img_width, proportion_zeros=0.9844, proportion_ones=0.0156
+):
     """
     Generate a sample image and convert it into a CSV file with specific proportions of 0s and 1s.
     Args:
@@ -119,4 +128,4 @@ def generate_sample_files_unbalanced(img_height, img_width, proportion_zeros=0.9
             # Iterate over the rows of the prediction
             for idx_row, row in enumerate(prediction):
                 mystr = array_to_string(row)
-                f.write(f"{mask_id}_{idx_row},\"{mystr}\"\n")
+                f.write(f'{mask_id}_{idx_row},"{mystr}"\n')

@@ -13,6 +13,7 @@ from . import planktonds
 
 Image.MAX_IMAGE_PIXELS = None  # désactive la limite de taille
 
+
 def _show_image_mask_given(img, mask, image_name="plankton_sample.png"):
     """
     Display an image and its mask side by side.
@@ -53,7 +54,9 @@ def _show_mask_given(predict_mask, image_name="compare_mask.png"):
     logging.info(f"  - Saved mask comparison to {image_name}")
 
 
-def show_image_mask_from(ds: planktonds.PlanktonDataset, idx, image_name="plankton_sample.png"):
+def show_image_mask_from(
+    ds: planktonds.PlanktonDataset, idx, image_name="plankton_sample.png"
+):
     """
     Show the complete image and its reconstructed mask.
     Args:
@@ -61,7 +64,9 @@ def show_image_mask_from(ds: planktonds.PlanktonDataset, idx, image_name="plankt
         idx (int): Index of the image to display.
         image_name (str): File name to save the resulting figure.
     """
-    assert 0 <= idx < len(ds.image_files), f"Index {idx} out of range. Dataset has {len(ds.image_files)} images."
+    assert 0 <= idx < len(ds.image_files), (
+        f"Index {idx} out of range. Dataset has {len(ds.image_files)} images."
+    )
 
     image_path = os.path.join(ds.image_mask_dir, ds.image_files[idx])
     img = patch.extract_patch_from_ppm(image_path, 0, 0, ds.images_size[idx])
@@ -70,7 +75,9 @@ def show_image_mask_from(ds: planktonds.PlanktonDataset, idx, image_name="plankt
     _show_image_mask_given(img, mask, image_name)
 
 
-def show_mask_predict_compare_to_real(ds: planktonds.PlanktonDataset, idx, real_dataset, image_name="compare_mask.png"):
+def show_mask_predict_compare_to_real(
+    ds: planktonds.PlanktonDataset, idx, real_dataset, image_name="compare_mask.png"
+):
     """
     Compare the real mask and predicted mask for an image.
     Args:
@@ -79,11 +86,19 @@ def show_mask_predict_compare_to_real(ds: planktonds.PlanktonDataset, idx, real_
         real_dataset (PlanktonDataset): Dataset with real masks.
         image_name (str): File name to save the resulting figure.
     """
-    assert 0 <= idx < len(ds.image_files), f"Index {idx} out of range. Dataset has {len(ds.image_files)} images."
-    assert isinstance(real_dataset, planktonds.PlanktonDataset), "real_dataset must be an instance of PlanktonDataset."
+    assert 0 <= idx < len(ds.image_files), (
+        f"Index {idx} out of range. Dataset has {len(ds.image_files)} images."
+    )
+    assert isinstance(real_dataset, planktonds.PlanktonDataset), (
+        "real_dataset must be an instance of PlanktonDataset."
+    )
 
-    real_mask_path = os.path.join(real_dataset.image_mask_dir, real_dataset.mask_files[idx])
-    real_mask = patch.extract_patch_from_ppm(real_mask_path, 0, 0, real_dataset.images_size[idx])
+    real_mask_path = os.path.join(
+        real_dataset.image_mask_dir, real_dataset.mask_files[idx]
+    )
+    real_mask = patch.extract_patch_from_ppm(
+        real_mask_path, 0, 0, real_dataset.images_size[idx]
+    )
     real_mask = np.where(real_mask < 8, 0, 1)
 
     predict_mask = ds.reconstruct_mask(idx)
@@ -92,7 +107,9 @@ def show_mask_predict_compare_to_real(ds: planktonds.PlanktonDataset, idx, real_
     _show_mask_given(predict_mask, image_name)
 
 
-def show_plankton_patch_image(ds: planktonds.PlanktonDataset, idx, image_name="plankton_patch.png"):
+def show_plankton_patch_image(
+    ds: planktonds.PlanktonDataset, idx, image_name="plankton_patch.png"
+):
     """
     Display a patch of the plankton image at a specific index.
 
@@ -127,11 +144,12 @@ def show_tensor_image_given(X):
     plt.axis("off")
     plt.show()
 
+
 def show_predicted_mask_proba_vs_real_mask_binary(
-    ds: planktonds.PlanktonDataset, 
-    idx: int, 
-    real_dataset: planktonds.PlanktonDataset, 
-    image_name: str = "proba_compared_real.png"
+    ds: planktonds.PlanktonDataset,
+    idx: int,
+    real_dataset: planktonds.PlanktonDataset,
+    image_name: str = "proba_compared_real.png",
 ):
     """
     Compare the predicted probability heatmap with the real mask for an image,
@@ -140,12 +158,17 @@ def show_predicted_mask_proba_vs_real_mask_binary(
     """
 
     assert 0 <= idx < len(ds.image_files), f"Index {idx} out of range."
-    assert isinstance(real_dataset, planktonds.PlanktonDataset), \
+    assert isinstance(real_dataset, planktonds.PlanktonDataset), (
         "real_dataset must be an instance of PlanktonDataset."
+    )
 
     # 1) Load the real mask
-    real_mask_path = os.path.join(real_dataset.image_mask_dir, real_dataset.mask_files[idx])
-    real_mask = patch.extract_patch_from_ppm(real_mask_path, 0, 0, real_dataset.images_size[idx])
+    real_mask_path = os.path.join(
+        real_dataset.image_mask_dir, real_dataset.mask_files[idx]
+    )
+    real_mask = patch.extract_patch_from_ppm(
+        real_mask_path, 0, 0, real_dataset.images_size[idx]
+    )
     real_mask = np.where(real_mask < 8, 0, 1).astype(np.uint8)
 
     # 2) Load predicted probabilities
@@ -154,8 +177,9 @@ def show_predicted_mask_proba_vs_real_mask_binary(
     # Helper to compute F1 at a given threshold
     def f1_at_threshold(th):
         bin_mask = (proba_mask > th).to(torch.uint8)
-        return f1_score(real_mask.flatten(), bin_mask.cpu().numpy().flatten(), zero_division=1)
-
+        return f1_score(
+            real_mask.flatten(), bin_mask.cpu().numpy().flatten(), zero_division=1
+        )
 
     # Ternary search is faster than gridsearch.
     # 3) Ternary search for threshold in [low, high] with 5 iterations
@@ -177,9 +201,10 @@ def show_predicted_mask_proba_vs_real_mask_binary(
     # After 5 iterations, pick the midpoint of [low, high]
     best_threshold = (low + high) / 2
     best_f1 = f1_at_threshold(best_threshold)
-    
 
-    logging.info(f"[Ternary Search] Best threshold ~ {best_threshold:.4f}, F1 = {best_f1:.4f}")
+    logging.info(
+        f"[Ternary Search] Best threshold ~ {best_threshold:.4f}, F1 = {best_f1:.4f}"
+    )
 
     f1_threshold_0_5 = f1_at_threshold(0.5)
     logging.info(f"Default 0.5 threshold, F1 = {f1_threshold_0_5:.4f}")
@@ -204,7 +229,7 @@ def show_predicted_mask_proba_vs_real_mask_binary(
     plt.suptitle(
         f"Thresholds: Best = {best_threshold:.2f} (F1 = {best_f1:.4f}), 0.5 (F1 = {f1_threshold_0_5:.4f})",
         fontsize=12,
-        y=0.98
+        y=0.98,
     )
 
     plt.tight_layout()
@@ -212,14 +237,11 @@ def show_predicted_mask_proba_vs_real_mask_binary(
     logging.info(f"Saved probability vs real mask comparison to {image_name}")
 
 
-
-
-
 def show_validation_image_vs_predicted_mask(
     ds: planktonds.PlanktonDataset,
     idx: int,
     validation_dataset: planktonds.PlanktonDataset,
-    image_name: str = "validation_vs_predicted.png"
+    image_name: str = "validation_vs_predicted.png",
 ):
     """
     Compare the validation image with the predicted mask (probability heatmap) for a given index.
@@ -234,10 +256,9 @@ def show_validation_image_vs_predicted_mask(
     # 1) Load the validation image
     val_image_name = validation_dataset.image_files[idx]
     print(f"Selected image = {val_image_name}")
- 
+
     val_image_path = os.path.join(
-        validation_dataset.image_mask_dir, 
-        validation_dataset.image_files[idx]
+        validation_dataset.image_mask_dir, validation_dataset.image_files[idx]
     )
 
     val_image = plt.imread(val_image_path)

@@ -14,21 +14,17 @@ from . import submission
 from . import dataloader
 from . import visualization
 
+
 def test_patch(config):
     """Test patch functionality."""
     logging.info("\n=== Test: Patch Extraction ===")
-    dir_path = config['data']['trainpath']
-
-    img_path = dir_path + 'rg20091216_scan.png.ppm'
+    dir_path = config["data"]["trainpath"]
+    img_path = dir_path + "rg20091216_scan.png.ppm"
     logging.info(f"Image size: {patch.extract_ppm_size(img_path)}")
-    
     img = patch.extract_patch_from_ppm(img_path, 4000, 4000, [1240, 1240])
-
-    mask_path = dir_path + 'rg20091216_mask.png.ppm'
+    mask_path = dir_path + "rg20091216_mask.png.ppm"
     logging.info(f"Mask size: {patch.extract_ppm_size(mask_path)}")
-    
     mask = patch.extract_patch_from_ppm(mask_path, 4000, 4000, [1240, 1240])
-
     visualization._show_image_mask_given(img, mask, "test_patch")
     logging.info("=== End of Test: Patch Extraction ===")
 
@@ -36,7 +32,7 @@ def test_patch(config):
 def test_PlanktonDataset_train(config):
     """Test PlanktonDataset for training."""
     logging.info("\n=== Test: PlanktonDataset (Train) ===")
-    dir_path = config['data']['trainpath']
+    dir_path = config["data"]["trainpath"]
     dataset = planktonds.PlanktonDataset(dir_path, patch_size=(10000, 10000))
 
     logging.info(f"Dataset size: {len(dataset)}")
@@ -50,29 +46,36 @@ def test_PlanktonDataset_train(config):
         try:
             img, mask = dataset[i]
             # visualization._show_image_mask_given(img,mask, f"test_plaktondataset_train_image_{i}")
-            if i% 10 == 0:
+            if i % 10 == 0:
                 logging.info(f"Patch {i} processed successfully.")
         except Exception as e:
             logging.error(f"Error processing patch {i}: {e}")
 
     logging.info("Displaying the original image...")
     img = patch.extract_patch_from_ppm(
-        dir_path + dataset.image_files[0], 0, 0, dataset.images_size[0])
+        dir_path + dataset.image_files[0], 0, 0, dataset.images_size[0]
+    )
     mask = patch.extract_patch_from_ppm(
-        dir_path + dataset.mask_files[0], 0, 0, dataset.images_size[0])
+        dir_path + dataset.mask_files[0], 0, 0, dataset.images_size[0]
+    )
     visualization._show_image_mask_given(img, mask, "test_planktondataset_train")
 
     logging.info("=== End of Test: PlanktonDataset (Train) ===")
+
 
 def test_augmented_data(config):
     """Test PlanktonDataset for training."""
     logging.info("\n=== Test: Augmented Data ===")
 
-    dir_path = config['data']['trainpath']
+    dir_path = config["data"]["trainpath"]
     logging.info("  - tranfrom = True")
-    transform = A.Compose([A.VerticalFlip(p=0.3), A.HorizontalFlip(p=0.3),A.GaussianBlur(p=0.01) ])
+    transform = A.Compose(
+        [A.VerticalFlip(p=0.3), A.HorizontalFlip(p=0.3), A.GaussianBlur(p=0.01)]
+    )
 
-    dataset = planktonds.PlanktonDataset(dir_path, patch_size=(1024, 1024),transform=transform)
+    dataset = planktonds.PlanktonDataset(
+        dir_path, patch_size=(1024, 1024), transform=transform
+    )
     logging.info(f"Dataset size: {len(dataset)}")
     logging.info(f"Patch size: {dataset.patch_size}")
     logging.info(f"Image files: {len(dataset.image_files)}")
@@ -80,14 +83,17 @@ def test_augmented_data(config):
 
     logging.info("Displaying the original image...")
     img = patch.extract_patch_from_ppm(
-        dir_path + dataset.image_files[1], 0, 0, dataset.images_size[1])
+        dir_path + dataset.image_files[1], 0, 0, dataset.images_size[1]
+    )
     mask = patch.extract_patch_from_ppm(
-        dir_path + dataset.mask_files[1], 0, 0, dataset.images_size[1])
+        dir_path + dataset.mask_files[1], 0, 0, dataset.images_size[1]
+    )
     visualization._show_image_mask_given(img, mask, "test_reconstruct_original_image_1")
 
     logging.info("Displaying the augmented image... (expect ugly reconstruct)")
-    visualization.show_image_mask_from(dataset,1, "test_augmented_data")
+    visualization.show_image_mask_from(dataset, 1, "test_augmented_data")
     logging.info("=== End of Test: Augmented Data ===")
+
 
 def test_encoder():
     logging.info("\n=== Test: Encoder ===")
@@ -95,73 +101,83 @@ def test_encoder():
         "1111",
         "111100",
         "101101001010011000111001000011011010100010001010110110100011111100001101000000",
-        "111000100100000000100101111011010001010111101000001100110000001101011010101000"
+        "111000100100000000100101111011010001010111101000001100110000001101011010101000",
     ]
-    expected_results = [
-        "l",
-        "l",
-        "]:Hi3JR:fSl=0",
-        "hT0UkAGX<`=JX" 
-    ]
-    for binary, expected_result in zip(binary_to_encode,expected_results):
+    expected_results = ["l", "l", "]:Hi3JR:fSl=0", "hT0UkAGX<`=JX"]
+    for binary, expected_result in zip(binary_to_encode, expected_results):
         result = submission.array_to_string(np.array(list(binary)))
-        if result == expected_result :
+        if result == expected_result:
             logging.info(f"{binary} has been correctly encode to {expected_result}.")
-        else :
-            logging.error(f"{binary} has been incorrectly encode to {result} instead of {expected_result}.")
+        else:
+            logging.error(
+                f"{binary} has been incorrectly encode to {result} instead of {expected_result}."
+            )
     logging.info("=== End of Test: Encoder ===")
+
 
 def test_reconstruct_image(config, original=False):
     """Test image reconstruction."""
     logging.info("\n=== Test: Image Reconstruction ===")
 
-    dir_path = config['data']['trainpath']
+    dir_path = config["data"]["trainpath"]
     patch_size = (10000, 10000)
     dataset = planktonds.PlanktonDataset(dir_path, patch_size)
 
     if original:
         logging.info("Displaying the original image...")
         img = patch.extract_patch_from_ppm(
-            dir_path + dataset.image_files[1], 0, 0, dataset.images_size[1])
+            dir_path + dataset.image_files[1], 0, 0, dataset.images_size[1]
+        )
         mask = patch.extract_patch_from_ppm(
-            dir_path + dataset.mask_files[1], 0, 0, dataset.images_size[1])
-        visualization._show_image_mask_given(img, mask, "test_reconstruct_original_image_1")
+            dir_path + dataset.mask_files[1], 0, 0, dataset.images_size[1]
+        )
+        visualization._show_image_mask_given(
+            img, mask, "test_reconstruct_original_image_1"
+        )
 
     logging.info("Displaying the reconstructed image...")
-    visualization.show_image_mask_from(dataset,1, "test_reconstruct_image")
+    visualization.show_image_mask_from(dataset, 1, "test_reconstruct_image")
 
     logging.info("=== End of Test: Image Reconstruction ===")
+
 
 def test_generate_csv_file(config):
     logging.info("\n=== Test: Generation fichier CSV ===")
 
     logging.info("Charge Data")
-    dir_path = config['data']['trainpath']
-    patch_size = (20000,2)
-    ds = planktonds.PlanktonDataset(dir_path,patch_size)
+    dir_path = config["data"]["trainpath"]
+    patch_size = (20000, 2)
+    ds = planktonds.PlanktonDataset(dir_path, patch_size)
 
     logging.info("Make csv file")
     _, mask = ds[10000]
     _, mask1 = ds[11000]
     ordered_list = ds.mask_files[:2]
-    submission.generate_submission_file([mask, mask1],ordered_list,"test_csv_file.csv")
+    submission.generate_submission_file(
+        [mask, mask1], ordered_list, "test_csv_file.csv"
+    )
 
     logging.info("=== End of Test: Generation fichier CSV ===")
+
 
 def test_PlanktonDataset_test(config):
     logging.info("\n=== Test: PlanktonDataset (Test) ===")
 
     logging.info("Charge Data train")
     logging.info("  - tranfrom = True")
-    transform = A.Compose([A.VerticalFlip(p=0.3), A.HorizontalFlip(p=0.3),A.GaussianBlur(p=0.01) ])
-    dir_path = config['data']['trainpath']
-    patch_size = (1000,1000)
-    ds_train = planktonds.PlanktonDataset(dir_path,patch_size, transform=transform)
+    transform = A.Compose(
+        [A.VerticalFlip(p=0.3), A.HorizontalFlip(p=0.3), A.GaussianBlur(p=0.01)]
+    )
+    dir_path = config["data"]["trainpath"]
+    patch_size = (1000, 1000)
+    ds_train = planktonds.PlanktonDataset(dir_path, patch_size, transform=transform)
 
     logging.info("Charge Data test")
-    ds_test = planktonds.PlanktonDataset(dir_path,patch_size, mode='test')
+    ds_test = planktonds.PlanktonDataset(dir_path, patch_size, mode="test")
 
-    num_patches_first_image = ds_train.image_patches[0][0] * ds_train.image_patches[0][1]
+    num_patches_first_image = (
+        ds_train.image_patches[0][0] * ds_train.image_patches[0][1]
+    )
     for i in range(num_patches_first_image):
         if i % 10 == 0:
             logging.info(f"Processing index {i}...")
@@ -171,15 +187,20 @@ def test_PlanktonDataset_test(config):
             logging.info(f"Error at index {i}: {e}")
 
     logging.info("Impression de l'image reconstruite")
-    visualization.show_mask_predict_compare_to_real(ds_test,0, ds_train,"test_planktondataset_test")
+    visualization.show_mask_predict_compare_to_real(
+        ds_test, 0, ds_train, "test_planktondataset_test"
+    )
 
     logging.info("=== End of Test: PlanktonDataset (Test) ===")
+
 
 def test_dataloader(config):
     """Test data loader functionality."""
     logging.info("\n=== Test: DataLoader ===")
 
-    train_loader, valid_loader, input_size, num_classes = dataloader.get_dataloaders(config['data'], False)
+    train_loader, valid_loader, input_size, num_classes = dataloader.get_dataloaders(
+        config["data"], False
+    )
     logging.info(f"Train loader size: {len(train_loader)}")
     logging.info(f"Validation loader size: {len(valid_loader)}")
     logging.info(f"Input size: {input_size}")
@@ -187,11 +208,12 @@ def test_dataloader(config):
 
     logging.info("=== End of Test: DataLoader ===")
 
+
 def test_size_plankton(config):
     """Test the size of PlanktonDataset samples."""
     logging.info("\n=== Test: PlanktonDataset Size ===")
 
-    dir_path = config['data']['trainpath']
+    dir_path = config["data"]["trainpath"]
     patch_size = (10000, 10000)
     dataset = planktonds.PlanktonDataset(dir_path, patch_size)
 
@@ -214,7 +236,7 @@ if __name__ == "__main__":
 
     logging.info("Loading {}".format(sys.argv[1]))
     config = yaml.safe_load(open(sys.argv[1], "r"))
-    
+
     # test_patch(config)
     # test_PlanktonDataset_train(config)
     # test_reconstruct_image(config)

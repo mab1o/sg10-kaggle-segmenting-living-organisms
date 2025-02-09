@@ -10,6 +10,7 @@ import torch.utils.data
 from . import planktonds
 from .transformations import get_transforms
 
+
 def get_dataloaders(data_config, use_cuda):
     """
     Prépare les DataLoaders pour entraîner et valider un modèle avec un dataset PlanktonDataset.
@@ -33,15 +34,17 @@ def get_dataloaders(data_config, use_cuda):
     quick_test = data_config["quick_test"]
 
     logging.info("  - Dataset creation (PlanktonDataset)")
-    transform_type = data_config.get("transform_type", "default")  # Par défaut, transformations légères
+    transform_type = data_config.get(
+        "transform_type", "default"
+    )  # Par défaut, transformations légères
     transform = get_transforms(transform_type)
     base_dataset = planktonds.PlanktonDataset(
-        image_mask_dir=data_config['trainpath'],
+        image_mask_dir=data_config["trainpath"],
         patch_size=data_config["patch_size"],
         mode="train",
         transform=transform,  # On met quand même la transformation, mais activée que pour train
-        apply_transform=False  # On désactive par défaut car on va 
-        #l'activer apres seulement pour le train_dataset
+        apply_transform=False,  # On désactive par défaut car on va
+        # l'activer apres seulement pour le train_dataset
     )
 
     logging.info(f"  - I loaded {len(base_dataset)} samples")
@@ -68,7 +71,7 @@ def get_dataloaders(data_config, use_cuda):
     train_loader = torch.utils.data.DataLoader(
         train_dataset,
         batch_size=batch_size,
-        shuffle=True, 
+        shuffle=True,
         num_workers=num_workers,
         pin_memory=use_cuda,
     )
@@ -84,5 +87,7 @@ def get_dataloaders(data_config, use_cuda):
     num_classes = 1
     input_size = tuple(base_dataset[0][0].shape)
 
-    logging.info(f"  - Input size is {input_size} and the number of classes is {num_classes}.")
+    logging.info(
+        f"  - Input size is {input_size} and the number of classes is {num_classes}."
+    )
     return train_loader, valid_loader, input_size, num_classes

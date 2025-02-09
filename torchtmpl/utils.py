@@ -15,12 +15,15 @@ import functools
 from . import models
 import yaml
 
+
 def amp_autocast(func):
     """Décorateur pour exécuter une fonction avec autocast AMP"""
+
     @functools.wraps(func)
     def wrapper(*args, **kwargs):
         with torch.amp.autocast(device_type="cuda"):
             return func(*args, **kwargs)
+
     return wrapper
 
 
@@ -29,20 +32,22 @@ def generate_unique_logpath(logdir, raw_run_name):
     Generate a unique directory name ensuring logs are saved in the home directory.
     """
     # Ensure logdir is stored in HOME while keeping it relative in YAML
-    home_logdir = os.path.join(os.path.expanduser("~"), logdir)  # Expands ~/logs → /home/username/logs
+    home_logdir = os.path.join(
+        os.path.expanduser("~"), logdir
+    )  # Expands ~/logs → /home/username/logs
 
     timestamp = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")  # AAAAMMJJ-HHMMSS
     i = 0
 
     while True:
-        run_name = f"{raw_run_name}_{i}_{timestamp}"  
-        log_path = os.path.join(home_logdir, run_name)  
+        run_name = f"{raw_run_name}_{i}_{timestamp}"
+        log_path = os.path.join(home_logdir, run_name)
 
         if not os.path.isdir(log_path):
             os.makedirs(log_path, exist_ok=True)
             print(f"Dossier choisi pour ce run : {log_path}")
             return log_path
-        
+
         i += 1
 
 
@@ -103,7 +108,6 @@ def train(model, loader, f_loss, optimizer, device, dynamic_display=True):
     scaler = GradScaler("cuda")  # Initialiser le scaler pour la précision mixte
 
     for i, (inputs, targets) in (pbar := tqdm.tqdm(enumerate(loader))):
-
         inputs, targets = inputs.to(device), targets.to(device)
 
         optimizer.zero_grad()  # Toujours remettre les gradients à zéro avant le passage avant
@@ -117,9 +121,8 @@ def train(model, loader, f_loss, optimizer, device, dynamic_display=True):
         scaler.scale(loss).backward()
 
         # Clipping des gradients pour éviter les explosions de gradients
-        #scaler.unscale_(optimizer)  # Nécessaire avant clip_grad_norm_ avec AMP
-        #torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=5.0)
-
+        # scaler.unscale_(optimizer)  # Nécessaire avant clip_grad_norm_ avec AMP
+        # torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=5.0)
 
         scaler.step(optimizer)
         scaler.update()
@@ -136,8 +139,9 @@ def train(model, loader, f_loss, optimizer, device, dynamic_display=True):
         # We here consider the loss is batch normalized
         total_loss += inputs.shape[0] * loss.item()
         num_samples += inputs.shape[0]
-        pbar.set_description(f"Train loss : {total_loss/num_samples:.4f}")
+        pbar.set_description(f"Train loss : {total_loss / num_samples:.4f}")
     return total_loss / num_samples
+
 
 @amp_autocast
 def test(model, loader, f_loss, device):
@@ -156,7 +160,7 @@ def test(model, loader, f_loss, device):
         avg_precision -- The precision computed over the dataset
         avg_recall    -- The recall computed over the dataset
     """
-    
+
     model.eval()
     total_loss, num_samples = 0, 0
 
@@ -177,12 +181,12 @@ def test(model, loader, f_loss, device):
 
             # Convert logits to binary predictions
             preds = (torch.sigmoid(outputs) > 0.5).int()
-            
+
             targets = targets.int()  # Ajoute cette ligne
 
             # Get stats for precision, recall, F1 computation
             batch_tp, batch_fp, batch_fn, batch_tn = smp.metrics.get_stats(
-                preds, targets, mode='binary', threshold=0.5
+                preds, targets, mode="binary", threshold=0.5
             )
 
             # Aggregate stats
@@ -200,18 +204,21 @@ def test(model, loader, f_loss, device):
     return avg_loss, avg_f1, avg_precision, avg_recall
 
 
-
-
 def load_model_config(test_config):
-    model_config_path = os.path.join(test_config["model_path"], test_config["model_config"])
+    model_config_path = os.path.join(
+        test_config["model_path"], test_config["model_config"]
+    )
     logging.info(f"Loading model configuration from: {model_config_path}")
     with open(model_config_path, "r") as f:
         return yaml.safe_load(f)["model"]
 
+
 def build_and_load_model(model_config, input_size, num_classes, model_path, device):
     model = models.build_model(model_config, input_size, num_classes)
     model.to(device)
-    model.load_state_dict(torch.load(model_path, map_location=device, weights_only=True))
+    model.load_state_dict(
+        torch.load(model_path, map_location=device, weights_only=True)
+    )
     model.eval()
     return model
 
@@ -224,11 +231,13 @@ def apply_tta(model, use_tta):
 
     if use_tta:
         logging.info("Test-Time Augmentation (TTA) ACTIVÉ")
-        tta_transforms = tta.Compose([
-            tta.HorizontalFlip(),
-            tta.VerticalFlip(),
-            tta.Rotate90(angles=[0, 90, 180, 270])
-        ])
+        tta_transforms = tta.Compose(
+            [
+                tta.HorizontalFlip(),
+                tta.VerticalFlip(),
+                tta.Rotate90(angles=[0, 90, 180, 270]),
+            ]
+        )
         return tta.SegmentationTTAWrapper(model, tta_transforms)
     else:
         logging.info("Test-Time Augmentation (TTA) DÉSACTIVÉ")

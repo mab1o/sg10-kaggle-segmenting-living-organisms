@@ -1,5 +1,6 @@
 import numpy as np
 
+
 def extract_ppm_size(ppm_path):
     """
     Extract a size from a PPM image
@@ -43,7 +44,7 @@ def extract_patch_from_ppm(ppm_path, row_idx, col_idx, patch_size):
                 break
         ncols, nrows = map(int, line.split())
         maxval = int(f.readline().decode("utf-8"))
-        
+
         # Maxval is either lower than 256 or 65536
         # It is actually 255 for the scans, and 65536 for the masks
         # This maximal value impacts the number of bytes used for encoding the pixels' value
@@ -67,7 +68,7 @@ def extract_patch_from_ppm(ppm_path, row_idx, col_idx, patch_size):
         f.seek(first_pixel_offset)  # Seek back to the first pixel
 
         # Read all the rows of the patch from the image
-        patch_size=(patch_size[1],patch_size[0])
+        patch_size = (patch_size[1], patch_size[0])
         patch = np.zeros(patch_size, dtype=dtype)
         for i in range(patch_size[0]):
             f.seek(
