@@ -1,24 +1,19 @@
-# coding: utf-8
-
 # Standard imports
+import argparse
 import logging
-import sys
 import os
 import pathlib
+import sys
+
+import torch
+import torchinfo.torchinfo as torchinfo
+import wandb
 
 # External imports
 import yaml
-import wandb
-import torch
-import torchinfo.torchinfo as torchinfo
-import argparse
 
 # Local imports
-from . import data
-from . import models
-from . import optim
-from . import utils
-from torchtmpl.data.transformations import get_transforms
+from . import data, models, optim, utils
 from .utils import amp_autocast
 
 if torch.cuda.is_available():
@@ -94,7 +89,7 @@ def train(config):
         artifact.add_file(str(config_path))
         wandb.log_artifact(artifact)
 
-    chosen_transforms = get_transforms(config["data"]["transform_type"])
+    chosen_transforms = data.get_transforms(config["data"]["transform_type"])
     logging.info(f"Niveau de transformation: {(config['data']['transform_type'])}")
     # Afficher dans le terminal avec logging
     logging.info(f"Transformations appliquées : {chosen_transforms}")
@@ -142,35 +137,26 @@ def train(config):
         # Mise à jour du checkpoint si meilleur F1-score
         updated = model_checkpoint.update(test_f1)
         logging.info(
-            "[%d/%d] Test loss : %.4f, Precision : %.4f, Recall : %.4f, Test F1-score : %.4f %s"
-            % (
-                e,
-                config["nepochs"],
-                test_loss,
-                test_precision,
-                test_recall,
-                test_f1,
-                "[>> BETTER F1 <<]" if updated else "",
-            )
+            f"[{e}/{config['nepochs']}] Test loss : {test_loss:.4f}, Precision : {test_precision:.4f}, "
+            f"Recall : {test_recall:.4f}, Test F1-score : {test_f1:.4f} "
+            f"{'[>> BETTER F1 <<]' if updated else ''}"
         )
 
         # Log dans wandb
         if wandb_log is not None:
             logging.info("Logging on wandb")
-            wandb_log(
-                {
-                    "train_CE": train_loss,
-                    "test_CE": test_loss,
-                    "test_Precision": test_precision,
-                    "test_Recall": test_recall,
-                    "test_F1": test_f1,
-                }
-            )
+            wandb_log({
+                "train_CE": train_loss,
+                "test_CE": test_loss,
+                "test_Precision": test_precision,
+                "test_Recall": test_recall,
+                "test_F1": test_f1,
+            })
 
 
 @amp_autocast
 def test(config):
-    """Visualize and validate results with binary prediction"""
+    """Visualize and validate results with binary prediction."""
     device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
     model_path = os.path.join(
         config["test"]["model_path"], config["test"]["model_name"]
@@ -232,7 +218,7 @@ def test(config):
 
 @amp_autocast
 def test_proba(config):
-    """Visualize and validate results with binary prediction"""
+    """Visualize and validate results with binary prediction."""
     device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
     model_path = os.path.join(
         config["test"]["model_path"], config["test"]["model_name"]
@@ -348,7 +334,7 @@ def sub(config, use_tta=False):
 
 @amp_autocast
 def sub_ensemble(config):
-    """Effectue une prédiction par ensemble de modèles"""
+    """Effectue une prédiction par ensemble de modèles."""
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     logging.info("= Dataset")
@@ -389,7 +375,7 @@ def sub_ensemble(config):
         logging.info(f"Loading model: {model_path} with config: {config_path}")
 
         # Charger la configuration du modèle
-        with open(config_path, "r") as f:
+        with open(config_path) as f:
             model_data = yaml.safe_load(f)
         model_config = model_data["model"]
 
@@ -443,8 +429,7 @@ if __name__ == "__main__":
 
     # check in advance if cuda is available
     if torch.cuda.is_available():
-        print("CUDA is available!")
-        print(f"Device name: {torch.cuda.get_device_name(0)}")
+        print(f"CUDA is available! Device name: {torch.cuda.get_device_name(0)}")
     else:
         print("CUDA is NOT available.")
 
@@ -461,7 +446,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     logging.info(f"Loading configuration from {args.config}")
-    with open(args.config, "r") as f:
+    with open(args.config) as f:
         config = yaml.safe_load(f)
 
     # activer avec --tta, sinon désactivé

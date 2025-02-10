@@ -1,12 +1,12 @@
 import timm
+import torch
 import torch.nn as nn
 import torch.nn.functional as F
-import torch
 
 
 class EfficientNetB3Segmentation(nn.Module):
     def __init__(self, input_channels, num_classes):
-        super(EfficientNetB3Segmentation, self).__init__()
+        super().__init__()
         # Load EfficientNet-B3 encoder from timm
         self.encoder = timm.create_model(
             "efficientnet_b3",
@@ -46,9 +46,7 @@ class EfficientNetB3Segmentation(nn.Module):
     # return probability prediction mask
     # we return a probability and not a binary prediction to be able to print the heatmap of probability.
     def predict_probs(self, x):
-        """
-        Predict method returning logits (before sigmoid) for visualization or evaluation.
-        """
+        """Predict method returning logits (before sigmoid) for visualization or evaluation."""
         self.eval()
         with torch.no_grad():
             logits = self.forward(x)

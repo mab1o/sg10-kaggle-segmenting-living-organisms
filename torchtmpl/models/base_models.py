@@ -1,16 +1,14 @@
-# coding: utf-8
-
 # Standard imports
-from functools import reduce
 import operator
+from functools import reduce
 
 # External imports
 import torch.nn as nn
 
 
-def Linear(cfg, input_size, num_classes):
-    """
-    cfg: a dictionnary with possibly some parameters
+def linear(cfg, input_size, num_classes):
+    """cfg: a dictionnary with possibly some parameters.
+
     input_size: (C, H, W) input size tensor
     num_classes: int
     """

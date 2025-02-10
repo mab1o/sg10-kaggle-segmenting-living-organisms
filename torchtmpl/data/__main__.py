@@ -3,16 +3,12 @@ import logging
 import sys
 
 # External imports
-import yaml
-import numpy as np
 import albumentations as A
+import numpy as np
+import yaml
 
 # Local imports
-from . import patch
-from . import planktonds
-from . import submission
-from . import dataloader
-from . import visualization
+from . import dataloader, patch, planktonds, submission, visualization
 
 
 def test_patch(config):
@@ -29,7 +25,7 @@ def test_patch(config):
     logging.info("=== End of Test: Patch Extraction ===")
 
 
-def test_PlanktonDataset_train(config):
+def test_plankton_dataset_train(config):
     """Test PlanktonDataset for training."""
     logging.info("\n=== Test: PlanktonDataset (Train) ===")
     dir_path = config["data"]["trainpath"]
@@ -69,9 +65,11 @@ def test_augmented_data(config):
 
     dir_path = config["data"]["trainpath"]
     logging.info("  - tranfrom = True")
-    transform = A.Compose(
-        [A.VerticalFlip(p=0.3), A.HorizontalFlip(p=0.3), A.GaussianBlur(p=0.01)]
-    )
+    transform = A.Compose([
+        A.VerticalFlip(p=0.3),
+        A.HorizontalFlip(p=0.3),
+        A.GaussianBlur(p=0.01),
+    ])
 
     dataset = planktonds.PlanktonDataset(
         dir_path, patch_size=(1024, 1024), transform=transform
@@ -160,14 +158,16 @@ def test_generate_csv_file(config):
     logging.info("=== End of Test: Generation fichier CSV ===")
 
 
-def test_PlanktonDataset_test(config):
+def test_plankton_dataset_inference(config):
     logging.info("\n=== Test: PlanktonDataset (Test) ===")
 
     logging.info("Charge Data train")
     logging.info("  - tranfrom = True")
-    transform = A.Compose(
-        [A.VerticalFlip(p=0.3), A.HorizontalFlip(p=0.3), A.GaussianBlur(p=0.01)]
-    )
+    transform = A.Compose([
+        A.VerticalFlip(p=0.3),
+        A.HorizontalFlip(p=0.3),
+        A.GaussianBlur(p=0.01),
+    ])
     dir_path = config["data"]["trainpath"]
     patch_size = (1000, 1000)
     ds_train = planktonds.PlanktonDataset(dir_path, patch_size, transform=transform)
@@ -234,8 +234,8 @@ if __name__ == "__main__":
         logging.error(f"Usage : {sys.argv[0]} config.yaml ")
         sys.exit(-1)
 
-    logging.info("Loading {}".format(sys.argv[1]))
-    config = yaml.safe_load(open(sys.argv[1], "r"))
+    logging.info(f"Loading {sys.argv[1]}")
+    config = yaml.safe_load(open(sys.argv[1]))
 
     # test_patch(config)
     # test_PlanktonDataset_train(config)

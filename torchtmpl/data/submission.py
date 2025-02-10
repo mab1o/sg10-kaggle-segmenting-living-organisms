@@ -1,19 +1,19 @@
 import numpy as np
 import torch
-from typing import List
 
 
 def generate_submission_file(
-    predictions: List[torch.Tensor],
-    ordered_files: List[str],
+    predictions: list[torch.Tensor],
+    ordered_files: list[str],
     file_name="submission.csv",
 ):
-    """
-    Generate the CSV file for kaggle submission
+    """Generate the CSV file for kaggle submission.
+
     Args :
         predictions (array of torch.Tensor): table of predicted value, one per image
         ordered_files (array of string): table of the name of the files
         file_name (string): name of the submission file
+
     """
     assert len(ordered_files) == len(predictions), (
         "The list of file name must be the same size as the list of prediction"
@@ -32,14 +32,16 @@ def generate_submission_file(
 
 
 def binary_list_to_string(binary_list, num_bits=6, offset=48):
-    """
-    Convert a list of binary digits (0s and 1s) into a string, where every 6 bits represent a character.
+    """Convert a list of binary digits (0s and 1s) into a string, where every 6 bits represent a character.
+
     Args:
         binary_list: List of integers (0 or 1) representing binary digits.
         num_bits: Number of bits to use for encoding.
         offset: Offset to add to the integer representation of the binary list.
+
     Returns:
         String representation of the binary input.
+
     """
     # Ensure the binary list length is a multiple of num_bits
     if len(binary_list) % num_bits != 0:
@@ -58,14 +60,16 @@ def binary_list_to_string(binary_list, num_bits=6, offset=48):
 
 
 def array_to_string(arr: np.array, num_bits=6, offset=48):
-    """
-    Transform array of 0 and 1 to a ASCII string
+    """Transform array of 0 and 1 to a ASCII string.
+
     Args:
         arr: a nd array of 0's and 1's
         num_bits: number of bits to use for encoding
         offset: offset to add to the integer representation of the binary list
+
     Returns:
         String representation of the binary input.
+
     """
     raveled = list(arr.ravel())
     # Pad the raveled sequence by 0's to have a size multiple of num_bits
@@ -75,13 +79,15 @@ def array_to_string(arr: np.array, num_bits=6, offset=48):
 
 
 def generate_sample_files(img_height, img_width):
-    """
-    Generate sample image convert into csv file
+    """Generate sample image convert into csv file.
+
     Args:
         img_height: image height
         img_width: image width
+
     Returns:
         None
+
     """
     with open("submission.csv", "w") as f:
         f.write("Id,Target\n")
@@ -100,8 +106,8 @@ def generate_sample_files(img_height, img_width):
 def generate_sample_files_unbalanced(
     img_height, img_width, proportion_zeros=0.9844, proportion_ones=0.0156
 ):
-    """
-    Generate a sample image and convert it into a CSV file with specific proportions of 0s and 1s.
+    """Generate a sample image and convert it into a CSV file with specific proportions of 0s and 1s.
+
     Args:
         img_height: image height
         img_width: image width
@@ -109,6 +115,7 @@ def generate_sample_files_unbalanced(
         proportion_ones: proportion of 1s in the mask
     Returns:
         None
+
     """
     with open("submission.csv", "w") as f:
         f.write("Id,Target\n")

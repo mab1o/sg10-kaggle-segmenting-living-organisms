@@ -2,12 +2,14 @@ import numpy as np
 
 
 def extract_ppm_size(ppm_path):
-    """
-    Extract a size from a PPM image
+    """Extract a size from a PPM image.
+
     Arguments:
         - ppm_path: the path to the PPM image
+
     Returns:
         - size: the size of ppm
+
     """
     # Read the PPM image and extract the patch
     with open(ppm_path, "rb") as f:
@@ -23,15 +25,17 @@ def extract_ppm_size(ppm_path):
 
 
 def extract_patch_from_ppm(ppm_path, row_idx, col_idx, patch_size):
-    """
-    Extract a patch from a PPM image
+    """Extract a patch from a PPM image.
+
     Arguments:
         - ppm_path: the path to the PPM image
         - row_idx: the row index of the patch
         - col_idx: the column index of the patch
         - patch_size: the size of the patch (width, height)
+
     Returns:
         - patch: the extracted patch
+
     """
     # Read the PPM image and extract the patch
     with open(ppm_path, "rb") as f:

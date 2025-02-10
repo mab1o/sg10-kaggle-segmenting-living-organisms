@@ -1,14 +1,12 @@
-# coding: utf-8
-
 # External imports
-import torch
 import segmentation_models_pytorch as smp
+import torch
 from torch.optim.lr_scheduler import (
-    StepLR,
-    MultiStepLR,
-    ExponentialLR,
     CosineAnnealingLR,
     CosineAnnealingWarmRestarts,
+    ExponentialLR,
+    MultiStepLR,
+    StepLR,
 )
 
 # local imports

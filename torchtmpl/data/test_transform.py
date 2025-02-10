@@ -1,6 +1,6 @@
 # External imports
-import matplotlib.pyplot as plt
 import albumentations as A
+import matplotlib.pyplot as plt
 
 # Local imports
 from torchtmpl.data.planktonds import PlanktonDataset

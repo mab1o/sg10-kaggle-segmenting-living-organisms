@@ -1,45 +1,70 @@
 import torch
 import torch.nn as nn
+from torch import Tensor
 
 
 class TverskyLoss(nn.Module):
-    """
-    Tversky Loss = 1 - (TP / (TP + alpha*FP + beta*FN))
-    alpha < beta => plus de pénalité sur les FN
+    """Tversky Loss = 1 - (TP / (TP + alpha*FP + beta*FN)).
+
+    alpha < beta => more penalty on false negatives (FN)
     """
 
-    def __init__(self, alpha=0.3, beta=0.7, smooth=1e-4, reduction="mean"):
-        super(TverskyLoss, self).__init__()
+    def __init__(
+        self,
+        alpha: float = 0.3,
+        beta: float = 0.7,
+        smooth: float = 1e-4,
+        reduction: str = "mean",
+    ):
+        super().__init__()
         self.alpha = alpha
         self.beta = beta
         self.smooth = smooth
         self.reduction = reduction
 
-    def forward(self, inputs, targets):
-        # Convertit logits en probabilités
+    def forward(self, inputs: Tensor, targets: Tensor) -> Tensor:
+        """Compute Tversky Loss.
+
+        Args:
+            inputs: Model logits (before sigmoid).
+            targets: Ground truth (same shape as inputs, binary values).
+
+        Returns:
+            Tversky loss as a scalar tensor.
+
+        """
+        # Convert logits to probabilities
         inputs = torch.sigmoid(inputs)
 
-        # Calcul TP, FP, FN
-        tp = (inputs * targets).sum()
-        fp = ((1 - targets) * inputs).sum()
-        fn = (targets * (1 - inputs)).sum()
+        # Compute TP, FP, FN
+        tp = (inputs * targets).sum(dim=(1, 2, 3))  # Sum over spatial dimensions
+        fp = ((1 - targets) * inputs).sum(dim=(1, 2, 3))
+        fn = (targets * (1 - inputs)).sum(dim=(1, 2, 3))
 
-        # Tversky Index
+        # Tversky Index (Adding smooth in denominator for stability)
         tversky_index = (tp + self.smooth) / (
             tp + self.alpha * fp + self.beta * fn + self.smooth
         )
+
+        # Compute loss
         loss = 1 - tversky_index
 
-        return loss if self.reduction == "mean" else loss
+        # Apply reduction
+        if self.reduction == "mean":
+            return loss.mean()
+        elif self.reduction == "sum":
+            return loss.sum()
+        elif self.reduction == "none":
+            return loss
+        else:
+            raise ValueError(f"Invalid reduction mode: {self.reduction}")
 
 
 class FocalTverskyLoss(nn.Module):
-    """
-    Focal Tversky Loss = (1 - Tversky Index) ^ gamma
-    """
+    """Focal Tversky Loss = (1 - Tversky Index) ^ gamma."""
 
     def __init__(self, alpha=0.3, beta=0.7, gamma=1.0, smooth=1e-6, reduction="mean"):
-        super(FocalTverskyLoss, self).__init__()
+        super().__init__()
         self.alpha = alpha
         self.beta = beta
         self.gamma = gamma

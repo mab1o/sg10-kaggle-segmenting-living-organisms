@@ -1,8 +1,9 @@
 [project]
 name = "torchtmpl"
-version = "0.0.1"
+version = "1.0.0"
 
 dependencies = [
+    "numpy>=1.21.0",
     "PyYAML>=6.0",
     "torch>=2.0.0",
     "torchvision>=0.15.0",
@@ -16,8 +17,49 @@ dependencies = [
     "albumentations",
     "segmentation-models-pytorch>=0.3.2",
     "kaggle>=1.6.17",
-    "ttach"
+    "ttach",
+    "ruff>=0.3.0",
 ]
 
 [options]
 package_dir = "torchtmpl"
+
+
+[tool.ruff]
+line-length = 88
+
+[tool.ruff.lint]
+select = [
+    "E",    # Erreurs pycodestyle
+    "F",    # Problèmes Pyflakes
+    "B",    # flake8-bugbear (pièges communs)
+    "I",    # isort (tri des imports)
+    "UP",   # pyupgrade (syntaxe Python moderne)
+    "N",    # pep8-naming (conventions de nommage)
+    "D",    # pydocstyle (docstring)
+    "C90",  # mccabe (complexité)
+]
+ignore = [
+    "D100", "D101", "D102", "D103",  # Docstrings non obligatoires pour classes/fonctions
+    "E501",                          # Longueur de ligne (gérée par Black)
+    "D213",                          # Conflit entre règles de docstring multi-lignes
+    "D203",                          # Conflit sur la ligne vide avant une classe (choisir entre D203 et D211)
+    "N812",                          # Autorise l'aliasing PyTorch (ex: import torch.nn.functional as F)
+    "D107",
+    "D417",
+]
+
+[tool.ruff.lint.isort]
+known-first-party = ["torchtmpl"] 
+known-third-party = [
+    "torch", "torchvision", "torchinfo", "wandb", "yaml", "scipy",
+    "tqdm", "matplotlib", "timm", "scikit-learn", "albumentations",
+    "segmentation_models_pytorch",  
+    "kaggle", "ttach"
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["D"]  # Relâche les règles de docstring dans les tests
+
+[tool.ruff.format]
+preview = true  # Active le formateur intégré de Ruff (alternative rapide à Black)

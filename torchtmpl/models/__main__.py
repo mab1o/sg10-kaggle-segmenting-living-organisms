@@ -1,8 +1,8 @@
-# coding: utf-8
+# Standar imports
+import logging
 
 # External imports
 import torch
-import logging
 
 # Local imports
 from . import build_model
@@ -37,7 +37,7 @@ def test_unet():
     cin = 1
     input_size = (cin, 32, 32)
     num_classes = 2
-    X = torch.zeros((1, *input_size))
+    x = torch.zeros((1, *input_size))
     cfg = {"class": "UNet", "encoder": {"model_name": "resnet18"}}
     model = build_model(
         cfg,
@@ -46,7 +46,7 @@ def test_unet():
     )
 
     model.eval()
-    y = model(X)
+    y = model(x)
     print(f"Output shape : {y.shape}")
     print(y[0, :, 1, :].shape)
     assert y.shape == (1, num_classes, input_size[1], input_size[2])
@@ -73,14 +73,14 @@ def test_efficientnet_b3_segmentation():
 
     # Generate a dummy input tensor
     batch_size = 1  # Single image for testing
-    X = torch.randn(batch_size, *input_size)  # Example input with random values
+    x = torch.randn(batch_size, *input_size)  # Example input with random values
 
     # Forward pass
     with torch.no_grad():
-        y = model(X)
+        y = model(x)
 
     # Print output shape
-    print(f"Input shape: {X.shape}")
+    print(f"Input shape: {x.shape}")
     print(f"Output shape: {y.shape}")
 
     # Assert that the output shape matches the expected size

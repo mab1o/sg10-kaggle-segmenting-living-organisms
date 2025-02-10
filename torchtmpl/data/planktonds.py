@@ -6,10 +6,8 @@ import numpy as np
 import torch
 from torch.utils.data import Dataset
 
-
 # Local imports
-from . import patch
-from . import submission
+from . import patch, submission
 
 
 class PlanktonDataset(Dataset):
@@ -21,13 +19,19 @@ class PlanktonDataset(Dataset):
         transform=None,
         apply_transform=True,
     ):
-        """
+        """Initialize the PlanktonDataset.
+
+        This dataset loads images and (optionally) their corresponding masks from a given directory,
+        computes patch information, and precomputes the total number of patches. In 'train' mode,
+        both images and masks are expected; in 'test' mode, only images are used.
+
         Args:
             image_mask_dir (str): Path to the directory containing images and masks.
             patch_size (tuple): Size of the square patch to extract (width, height).
             mode (str): Either 'train' or 'test'.
-            transform (list): List of transformations.
-            apply_transform (bool): If True, apply transformations (used for train only).
+            transform (list, optional): List of transformations to apply.
+            apply_transform (bool, optional): If True, apply the transformations (used for train mode only).
+
         """
         assert mode in ["train", "test"], "Mode must be either 'train' or 'test'"
         assert patch_size[0] > 0 and patch_size[1] > 0, (
@@ -39,14 +43,14 @@ class PlanktonDataset(Dataset):
         self.apply_transform = apply_transform  # Nouveau paramètre pour désactiver les transformations sur valid
         self.image_mask_dir = image_mask_dir
         self.patch_size = patch_size
-        self.image_files = sorted(
-            [f for f in os.listdir(image_mask_dir) if f.endswith("_scan.png.ppm")]
-        )
+        self.image_files = sorted([
+            f for f in os.listdir(image_mask_dir) if f.endswith("_scan.png.ppm")
+        ])
 
         if mode == "train":
-            self.mask_files = sorted(
-                [f for f in os.listdir(image_mask_dir) if f.endswith("_mask.png.ppm")]
-            )
+            self.mask_files = sorted([
+                f for f in os.listdir(image_mask_dir) if f.endswith("_mask.png.ppm")
+            ])
             assert len(self.image_files) == len(self.mask_files), (
                 "Mismatch between image and mask files"
             )
@@ -65,13 +69,15 @@ class PlanktonDataset(Dataset):
         self.total_patches = sum(x * y for x, y in self.image_patches)
 
     def _calculate_num_patches(self, width, height):
-        """
-        Calculate the number of patches in each dimension for a given image size.
+        """Calculate the number of patches in each dimension for a given image size.
+
         Args:
             width (int): Width of the image.
             height (int): Height of the image.
+
         Returns:
             tuple: Number of patches along width and height.
+
         """
         assert width > self.patch_size[0] and height > self.patch_size[1], (
             "Patch size is larger than the image dimensions."
@@ -81,18 +87,42 @@ class PlanktonDataset(Dataset):
         return num_patches_x, num_patches_y
 
     def __len__(self):
+        """Return the total number of patches in the dataset.
+
+        Returns:
+            int: The total number of patches
+
+        """
         return self.total_patches
 
-    def __getitem__(self, idx):
+    def __getitem__(self, idx: int):
+        """Retrieve a patch (and its corresponding mask if in training mode) from the dataset.
+
+        Args:
+            idx (int): The index of the patch to retrieve. Must be less than the total number of patches.
+
+        Returns:
+            torch.Tensor:
+                If the dataset is in test mode, returns a tensor of shape (1, H, W) representing the image patch.
+            Tuple[torch.Tensor, torch.Tensor]:
+                Otherwise (in train mode), returns a tuple where the first element is the image patch tensor
+                (of shape (1, H, W)) and the second element is the mask patch tensor.
+
+        """
         assert idx < len(self), f"Index out of range: {idx}"
 
-        # Determine the image and patch indices
+        # Determine the image index and patch index within that image.
         current_idx = idx
-        for image_idx, (num_patches_x, num_patches_y) in enumerate(self.image_patches):
+        image_idx = None
+        for i, (num_patches_x, num_patches_y) in enumerate(self.image_patches):
             num_patches = num_patches_x * num_patches_y
             if current_idx < num_patches:
+                image_idx = i
                 break
             current_idx -= num_patches
+
+        if image_idx is None:
+            raise IndexError(f"Index {idx} not found within image patches.")
 
         image_row, image_column = self._find_row_column(image_idx, current_idx)
         image_path = os.path.join(self.image_mask_dir, self.image_files[image_idx])
@@ -114,14 +144,16 @@ class PlanktonDataset(Dataset):
         return image_patch, mask_patch
 
     def _get_mask_patch(self, image_idx, image_row, image_column):
-        """
-        Extract the mask patch corresponding to the image patch.
+        """Extract the mask patch corresponding to the image patch.
+
         Args:
             image_idx (int): Index of the image.
             image_row (int): Row index of the patch.
             image_column (int): Column index of the patch.
+
         Returns:
             torch.Tensor: Mask patch.
+
         """
         mask_path = os.path.join(self.image_mask_dir, self.mask_files[image_idx])
         mask_patch = patch.extract_patch_from_ppm(
@@ -132,13 +164,15 @@ class PlanktonDataset(Dataset):
         return mask_patch
 
     def _find_row_column(self, image_idx, current_idx):
-        """
-        Calculate the row and column index for a given patch index.
+        """Calculate the row and column index for a given patch index.
+
         Args:
             image_idx (int): Index of the image.
             current_idx (int): Patch index within the image.
+
         Returns:
             tuple: (row index, column index) of the patch.
+
         """
         width, height = self.images_size[image_idx]
         num_patches_x, _ = self.image_patches[image_idx]
@@ -152,11 +186,12 @@ class PlanktonDataset(Dataset):
         return image_row, image_column
 
     def insert(self, mask_patch, idx=None):
-        """
-        Insert a mask patch to the Dataset
+        """Insert a mask patch to the Dataset.
+
         Args:
             mask_patch (torch.Tensor): patch of a mask
             idx (int): index of where the patches is added
+
         """
         assert self.mode == "test", "Dataset must be a test dataset to insert a patch"
         if idx is None:
@@ -166,12 +201,13 @@ class PlanktonDataset(Dataset):
             self.mask_files[idx] = mask_patch
 
     def to_submission(self, file_name="submission.csv"):
-        """
-        Rebuild mask and write it in a CSV file
+        """Rebuild mask and write it in a CSV file.
+
         Args :
             data (PlanktonDataset): Dataset of the images
             patches (list of torch.Tensor): mask patches to be rebuild
             file_name(string): file name at "submission.csv" per default
+
         """
         assert self.mode == "test", "to_submission must be use for test dataset"
         assert file_name.endswith(".csv"), "File name must end with .csv"
@@ -189,8 +225,7 @@ class PlanktonDataset(Dataset):
         submission.generate_submission_file(predictions, name_mask, file_name)
 
     def reconstruct_mask(self, idx, binary=True):
-        """
-        Reconstruct the full mask for a given image.
+        """Reconstruct the full mask for a given image.
 
         Args:
             idx (int): ID of the image.
@@ -199,6 +234,7 @@ class PlanktonDataset(Dataset):
 
         Returns:
             torch.Tensor: Reconstructed mask.
+
         """
         start_idx = sum(x * y for x, y in self.image_patches[:idx])
         end_idx = start_idx + self.image_patches[idx][0] * self.image_patches[idx][1]
@@ -252,6 +288,11 @@ class PlanktonDataset(Dataset):
         return reconstruct_mask
 
     def __repr__(self):
+        """Return an unambiguous string representation of the PlanktonDataset object.
+
+        The representation includes the dataset mode, the total number of images,
+        and the total number of patches. This is useful for debugging and logging.
+        """
         return (
             f"PlanktonDataset(mode={self.mode},"
             + f"total_images={len(self.image_files)},"

@@ -1,26 +1,28 @@
-# External imports
-import numpy as np
-import matplotlib.pyplot as plt
-import os
-import torch
+# Standard imports
 import logging
-from sklearn.metrics import f1_score
+import os
+
+# External imports
+import matplotlib.pyplot as plt
+import numpy as np
+import torch
 from PIL import Image
+from sklearn.metrics import f1_score
 
 # Local imports
-from . import patch
-from . import planktonds
+from . import patch, planktonds
 
 Image.MAX_IMAGE_PIXELS = None  # désactive la limite de taille
 
 
 def _show_image_mask_given(img, mask, image_name="plankton_sample.png"):
-    """
-    Display an image and its mask side by side.
+    """Display an image and its mask side by side.
+
     Args:
         img (np.ndarray or torch.Tensor): Image array, expected shape (H, W, 1) or (H, W).
         mask (np.ndarray or torch.Tensor): Mask array, expected shape (H, W).
         image_name (str): File name to save the resulting figure.
+
     """
     plt.figure(figsize=(10, 5))
     plt.subplot(1, 2, 1)
@@ -39,11 +41,12 @@ def _show_image_mask_given(img, mask, image_name="plankton_sample.png"):
 
 
 def _show_mask_given(predict_mask, image_name="compare_mask.png"):
-    """
-    Display a real mask and its prediction side by side.
+    """Display a real mask and its prediction side by side.
+
     Args:
         predict_mask (np.ndarray or torch.Tensor): Predicted mask, expected shape (H, W).
         image_name (str): File name to save the resulting figure.
+
     """
     plt.imshow(predict_mask, interpolation="none", cmap="tab20c")
     plt.title("Predict Mask")
@@ -57,12 +60,13 @@ def _show_mask_given(predict_mask, image_name="compare_mask.png"):
 def show_image_mask_from(
     ds: planktonds.PlanktonDataset, idx, image_name="plankton_sample.png"
 ):
-    """
-    Show the complete image and its reconstructed mask.
+    """Show the complete image and its reconstructed mask.
+
     Args:
         ds (PlanktonDataset): Dataset object.
         idx (int): Index of the image to display.
         image_name (str): File name to save the resulting figure.
+
     """
     assert 0 <= idx < len(ds.image_files), (
         f"Index {idx} out of range. Dataset has {len(ds.image_files)} images."
@@ -78,13 +82,14 @@ def show_image_mask_from(
 def show_mask_predict_compare_to_real(
     ds: planktonds.PlanktonDataset, idx, real_dataset, image_name="compare_mask.png"
 ):
-    """
-    Compare the real mask and predicted mask for an image.
+    """Compare the real mask and predicted mask for an image.
+
     Args:
         ds (PlanktonDataset): Dataset object with predictions.
         idx (int): Index of the image.
         real_dataset (PlanktonDataset): Dataset with real masks.
         image_name (str): File name to save the resulting figure.
+
     """
     assert 0 <= idx < len(ds.image_files), (
         f"Index {idx} out of range. Dataset has {len(ds.image_files)} images."
@@ -110,13 +115,13 @@ def show_mask_predict_compare_to_real(
 def show_plankton_patch_image(
     ds: planktonds.PlanktonDataset, idx, image_name="plankton_patch.png"
 ):
-    """
-    Display a patch of the plankton image at a specific index.
+    """Display a patch of the plankton image at a specific index.
 
     Args:
         ds (PlanktonDataset): Dataset object.
         idx (int): Index of the patch to display.
         image_name (str): File name to save the resulting figure.
+
     """
     if ds.mode == "train":
         img, mask = ds[idx]
@@ -127,20 +132,21 @@ def show_plankton_patch_image(
     _show_image_mask_given(img, mask, image_name)
 
 
-def show_tensor_image_given(X):
-    """
-    Display a single image.
+def show_tensor_image_given(x):
+    """Display a single image.
+
     Args:
-        X (torch.Tensor or np.ndarray): Image tensor or array, shape (C, H, W) or (H, W).
+        x (torch.Tensor or np.ndarray): Image tensor or array, shape (C, H, W) or (H, W).
+
     """
-    if isinstance(X, torch.Tensor):
-        X = X.numpy()
+    if isinstance(x, torch.Tensor):
+        x = x.numpy()
 
     plt.figure()
-    if X.ndim == 3:  # (C, H, W)
-        plt.imshow(X[0] if X.shape[0] == 1 else X.transpose(1, 2, 0))
+    if x.ndim == 3:  # (C, H, W)
+        plt.imshow(x[0] if x.shape[0] == 1 else x.transpose(1, 2, 0))
     else:  # (H, W)
-        plt.imshow(X, cmap="gray")
+        plt.imshow(x, cmap="gray")
     plt.axis("off")
     plt.show()
 
@@ -151,12 +157,11 @@ def show_predicted_mask_proba_vs_real_mask_binary(
     real_dataset: planktonds.PlanktonDataset,
     image_name: str = "proba_compared_real.png",
 ):
-    """
-    Compare the predicted probability heatmap with the real mask for an image,
-    and estimate the best threshold (for F1) using a ternary search across [0,1].
+    """Compare the predicted probability heatmap with the real mask for an image.
+
+    Estimate the best threshold (for F1) using a ternary search across [0,1].
     We do 5 iterations, and only display the heatmap + real mask side by side.
     """
-
     assert 0 <= idx < len(ds.image_files), f"Index {idx} out of range."
     assert isinstance(real_dataset, planktonds.PlanktonDataset), (
         "real_dataset must be an instance of PlanktonDataset."
@@ -243,16 +248,15 @@ def show_validation_image_vs_predicted_mask(
     validation_dataset: planktonds.PlanktonDataset,
     image_name: str = "validation_vs_predicted.png",
 ):
-    """
-    Compare the validation image with the predicted mask (probability heatmap) for a given index.
+    """Compare the validation image with the predicted mask (probability heatmap) for a given index.
 
     Args:
         ds (PlanktonDataset): Dataset object containing the predicted probabilities.
         idx (int): Index of the image to compare.
         validation_dataset (PlanktonDataset): Dataset object containing the validation images.
         image_name (str): File name to save the resulting figure.
-    """
 
+    """
     # 1) Load the validation image
     val_image_name = validation_dataset.image_files[idx]
     print(f"Selected image = {val_image_name}")

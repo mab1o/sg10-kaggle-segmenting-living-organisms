@@ -1,9 +1,9 @@
-# YOAT GOAT Edition - Optimized for EfficientNetB4
+# Best current YAML
 data:
   root_dir: '/mounts/Datasets3/2024-2025-ChallengePlankton/'
   trainpath: '/mounts/Datasets3/2024-2025-ChallengePlankton/train/'
   testpath: '/mounts/Datasets3/2024-2025-ChallengePlankton/test/'
-  batch_size: 64  
+  batch_size: 32  
   num_workers: 8
   valid_ratio: 0.1
   patch_size: [256, 256]  
@@ -19,11 +19,11 @@ optim:
 scheduler:
   class: CosineAnnealingWarmRestarts
   params:
-    T_0: 4  # Meilleur warm-up
+    T_0: 5  # Meilleur warm-up
     T_mult: 2
     eta_min: 0.000001
 
-nepochs: 15
+nepochs: 20
 pos_weight: 1
 
 loss:

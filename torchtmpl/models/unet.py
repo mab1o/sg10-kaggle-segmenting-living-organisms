@@ -1,11 +1,9 @@
-# coding: utf-8
-
 # Standard imports
 
 # External imports
+import timm
 import torch
 import torch.nn as nn
-import timm
 
 
 def conv_relu_bn(cin, cout):
@@ -86,13 +84,13 @@ class Decoder(nn.Module):
 
 
 class UNet(nn.Module):
-    """
-    UNet model
+    """UNet model.
 
     Args:
         cfg: configuration dictionary
         input_size: input image size (C, H, W)
         num_classes: number of output classes
+
     """
 
     def __init__(self, cfg, input_size, num_classes):
@@ -102,23 +100,23 @@ class UNet(nn.Module):
         self.encoder = TimmEncoder(cin, **(cfg["encoder"]))
         self.decoder = Decoder(num_classes)
 
-    def forward(self, X):
-        out, features = self.encoder(X)
+    def forward(self, x):
+        out, features = self.encoder(x)
         prediction = self.decoder(out, features)
         return prediction
 
-    def predict(self, X, threshold=0.5):
+    def predict(self, x, threshold=0.5):
         self.eval()
         with torch.no_grad():
-            logits = self.forward(X)
+            logits = self.forward(x)
             probs = torch.sigmoid(logits)
             binary_mask = (probs > threshold).long()
             return binary_mask.squeeze(1).squeeze(0)
 
-    def predict_probs(self, X):
+    def predict_probs(self, x):
         self.eval()
         with torch.no_grad():
-            logits = self.forward(X)
+            logits = self.forward(x)
             probs = torch.sigmoid(logits)
             return probs
 
@@ -147,19 +145,19 @@ def test_unet():
     cin = 1
     input_size = (cin, 512, 512)
     num_classes = 1
-    X = torch.zeros((1, *input_size))
+    x = torch.zeros((1, *input_size))
 
     cfg = {"encoder": {"model_name": "resnet18"}}
 
     model = UNet(cfg, input_size, num_classes)
     model.eval()
-    y = model(X)
+    y = model(x)
 
     print(f"Output shape : {y.shape}")
     assert y.shape == (1, num_classes, input_size[1], input_size[2])
     print(f"first row : {y[0, :, 0, :]}")
 
-    y = model.predict(X)
+    y = model.predict(x)
     print(f"Predict output shape: {y.shape}")
     print(f"first row : {y[0]}")
 

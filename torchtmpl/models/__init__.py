@@ -1,15 +1,21 @@
-# coding: utf-8
+"""Provide utilities for building segmentation models.
+
+It integrates both custom models defined within the package and standard models
+from the segmentation_models_pytorch library. The `build_model` function constructs
+a model based on a configuration dictionary, input size, and number of classes.
+
+"""
 
 # External imports
 import segmentation_models_pytorch as smp
 
 # Local imports
-from .cnn_models import VanillaCNN
-from .unet import UNet
+from .cnn_models import vanilla_cnn
 from .efficientnet_b3_segmentation import EfficientNetB3Segmentation
+from .unet import UNet
 
 CUSTOM_MODELS = {
-    "VanillaCNN": VanillaCNN,
+    "VanillaCNN": vanilla_cnn,
     "UNet": UNet,
     "EfficientNetB3Segmentation": EfficientNetB3Segmentation,
 }
@@ -32,7 +38,6 @@ SMP_MODELS = {
 def build_model(cfg, input_size, num_classes):
     model_class = cfg["class"]
     encoder_name = cfg["encoder"]["model_name"]
-    patch_size = cfg["patch_size"][0]
 
     # Validate if the model exists in SMP
     if model_class in SMP_MODELS:
@@ -49,7 +54,7 @@ def build_model(cfg, input_size, num_classes):
 
         # Ajout spécifique pour SegFormer
         if model_class == "Segformer":
-            model_params["decoder_segmentation_channels"] = patch_size
+            model_params["decoder_segmentation_channels"] = 256
 
         return SMP_MODELS[model_class](**model_params)
 

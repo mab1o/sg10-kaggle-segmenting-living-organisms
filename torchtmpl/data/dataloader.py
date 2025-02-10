@@ -12,8 +12,7 @@ from .transformations import get_transforms
 
 
 def get_dataloaders(data_config, use_cuda):
-    """
-    Prépare les DataLoaders pour entraîner et valider un modèle avec un dataset PlanktonDataset.
+    """Prépare les DataLoaders pour entraîner et valider un modèle avec un dataset PlanktonDataset.
 
     Args:
         data_config (dict): Configuration du dataset contenant :
@@ -27,6 +26,7 @@ def get_dataloaders(data_config, use_cuda):
 
     Returns:
         tuple: Contient les DataLoaders pour train et validation, la taille d'entrée et le nombre de classes (C, H, W).
+
     """
     valid_ratio = data_config["valid_ratio"]
     batch_size = data_config["batch_size"]

@@ -1,23 +1,20 @@
-# coding: utf-8
-
-# Standard imports
-import os
 import datetime
+import functools
 import logging
+import os
 
-# External imports
+import segmentation_models_pytorch as smp
 import torch
 import torch.nn
 import tqdm
-from torch.amp import GradScaler, autocast
-import segmentation_models_pytorch as smp
-import functools
-from . import models
 import yaml
+from torch.amp import GradScaler, autocast
+
+from . import models
 
 
 def amp_autocast(func):
-    """Décorateur pour exécuter une fonction avec autocast AMP"""
+    """Décorateur pour exécuter une fonction avec autocast AMP."""
 
     @functools.wraps(func)
     def wrapper(*args, **kwargs):
@@ -28,9 +25,7 @@ def amp_autocast(func):
 
 
 def generate_unique_logpath(logdir, raw_run_name):
-    """
-    Generate a unique directory name ensuring logs are saved in the home directory.
-    """
+    """Generate a unique directory name ensuring logs are saved in the home directory."""
     # Ensure logdir is stored in HOME while keeping it relative in YAML
     home_logdir = os.path.join(
         os.path.expanduser("~"), logdir
@@ -45,23 +40,27 @@ def generate_unique_logpath(logdir, raw_run_name):
 
         if not os.path.isdir(log_path):
             os.makedirs(log_path, exist_ok=True)
-            print(f"Dossier choisi pour ce run : {log_path}")
             return log_path
-
         i += 1
 
 
-class ModelCheckpoint(object):
-    """
-    Early stopping callback
-    """
+class ModelCheckpoint:
+    """Early stopping callback."""
 
     def __init__(
         self,
         model: torch.nn.Module,
-        savepath,
+        savepath: str,
         min_is_best: bool = True,
     ) -> None:
+        """Initialize a modelCheckpint instance.
+
+        Args:
+            model (torch.nn.Module): The model to monitor.
+            savepath (str): The file path where to save the model
+            min_is_best (bool, optional): Boolean to keep the lowest score. Defaults to True.
+
+        """
         self.model = model
         self.savepath = savepath
         self.best_score = None
@@ -85,10 +84,10 @@ class ModelCheckpoint(object):
 
 
 def train(model, loader, f_loss, optimizer, device, dynamic_display=True):
-    """
-    Train a model for one epoch, iterating over the loader
-    using the f_loss to compute the loss and the optimizer
-    to update the parameters of the model.
+    """Train a model for one epoch, iterating over the loader.
+
+    This function iterates over the loader, computes the loss with f_loss, and updates the model parameters with the optimizer.
+
     Arguments :
     model     -- A torch.nn.Module object
     loader    -- A torch.utils.data.DataLoader
@@ -98,7 +97,6 @@ def train(model, loader, f_loss, optimizer, device, dynamic_display=True):
     Returns :
     The averaged train metrics computed over a sliding window
     """
-
     # We enter train mode.
     # This is important for layers such as dropout, batchnorm, ...
     model.train()
@@ -107,7 +105,7 @@ def train(model, loader, f_loss, optimizer, device, dynamic_display=True):
     num_samples = 0
     scaler = GradScaler("cuda")  # Initialiser le scaler pour la précision mixte
 
-    for i, (inputs, targets) in (pbar := tqdm.tqdm(enumerate(loader))):
+    for _i, (inputs, targets) in (pbar := tqdm.tqdm(enumerate(loader))):
         inputs, targets = inputs.to(device), targets.to(device)
 
         optimizer.zero_grad()  # Toujours remettre les gradients à zéro avant le passage avant
@@ -145,10 +143,9 @@ def train(model, loader, f_loss, optimizer, device, dynamic_display=True):
 
 @amp_autocast
 def test(model, loader, f_loss, device):
-    """
-    Test a model over the loader using SMP metrics.
+    """Test a model over the loader using SMP metrics.
 
-    Arguments:
+    Args:
         model     -- A torch.nn.Module object
         loader    -- A torch.utils.data.DataLoader
         f_loss    -- The loss function, i.e. a loss Module
@@ -159,8 +156,8 @@ def test(model, loader, f_loss, device):
         avg_f1        -- The F1-score computed over the dataset
         avg_precision -- The precision computed over the dataset
         avg_recall    -- The recall computed over the dataset
-    """
 
+    """
     model.eval()
     total_loss, num_samples = 0, 0
 
@@ -209,7 +206,7 @@ def load_model_config(test_config):
         test_config["model_path"], test_config["model_config"]
     )
     logging.info(f"Loading model configuration from: {model_config_path}")
-    with open(model_config_path, "r") as f:
+    with open(model_config_path) as f:
         return yaml.safe_load(f)["model"]
 
 
@@ -224,20 +221,16 @@ def build_and_load_model(model_config, input_size, num_classes, model_path, devi
 
 
 def apply_tta(model, use_tta):
-    """
-    Wrap the model with TTA if use_tta is True.
-    """
+    """Wrap the model with TTA if use_tta is True."""
     import ttach as tta
 
     if use_tta:
         logging.info("Test-Time Augmentation (TTA) ACTIVÉ")
-        tta_transforms = tta.Compose(
-            [
-                tta.HorizontalFlip(),
-                tta.VerticalFlip(),
-                tta.Rotate90(angles=[0, 90, 180, 270]),
-            ]
-        )
+        tta_transforms = tta.Compose([
+            tta.HorizontalFlip(),
+            tta.VerticalFlip(),
+            tta.Rotate90(angles=[0, 90, 180, 270]),
+        ])
         return tta.SegmentationTTAWrapper(model, tta_transforms)
     else:
         logging.info("Test-Time Augmentation (TTA) DÉSACTIVÉ")

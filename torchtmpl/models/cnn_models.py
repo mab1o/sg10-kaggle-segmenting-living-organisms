@@ -1,8 +1,6 @@
-# coding: utf-8
-
 # Standard imports
-from functools import reduce
 import operator
+from functools import reduce
 
 # External imports
 import torch
@@ -25,11 +23,11 @@ def conv_down(cin, cout):
     ]
 
 
-def VanillaCNN(cfg, input_size, num_classes):
+def vanilla_cnn(cfg, input_size, num_classes):
     layers = []
     cin = input_size[0]
     cout = 16
-    for i in range(cfg["num_layers"]):
+    for _ in range(cfg["num_layers"]):
         layers.extend(conv_relu_bn(cin, cout))
         layers.extend(conv_relu_bn(cout, cout))
         layers.extend(conv_down(cout, 2 * cout))
