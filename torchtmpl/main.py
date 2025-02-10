@@ -18,6 +18,9 @@ from .utils import amp_autocast
 
 if torch.cuda.is_available():
     os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "expandable_segments:True"
+    torch.backends.cudnn.benchmark = True
+    torch.backends.cudnn.allow_tf32 = True
+    torch.backends.cuda.matmul.allow_tf32 = True
 
 
 def train(config):
@@ -43,9 +46,10 @@ def train(config):
     # Build the model
     logging.info("= Model")
     model_config = config["model"]
-    model = models.build_model(model_config, input_size, num_classes)
-    model.to(device)
-
+    inference=False
+    model = utils.build_and_load_model(
+        model_config, input_size, num_classes, device, inference
+    )
     # Charger le modèle pré-entraîné si un chemin est spécifié
     if "pretrained_model" in config and os.path.exists(config["pretrained_model"]):
         logging.info(f"Loading pretrained model from {config['pretrained_model']}")
@@ -174,8 +178,9 @@ def test(config):
     num_classes = input_size[0]
 
     logging.info("= Model")
+    inference=True
     model = utils.build_and_load_model(
-        model_config, input_size, num_classes, model_path, device
+        model_config, input_size, num_classes, model_path, device, inference
     )
 
     # Seconde partie de test: Utiliser les prédiction
@@ -186,7 +191,7 @@ def test(config):
         ):
             if idx_img % 400 == 0:
                 logging.info(f"  - Predicting mask {idx_img}")
-            image = dataset_test[idx_img].unsqueeze(0).to(device)
+            image = dataset_test[idx_img].unsqueeze(0).to(device, memory_format=torch.channels_last)
             dataset_test.insert(model.predict(image))
 
     print(dataset_test.mask_files[0][0])
@@ -240,8 +245,9 @@ def test_proba(config):
     num_classes = input_size[0]
 
     logging.info("= Model")
+    inference=True
     model = utils.build_and_load_model(
-        model_config, input_size, num_classes, model_path, device
+        model_config, input_size, num_classes, model_path, device, inference
     )
 
     # Seconde partie de test_with_proba: mask de proba prédit vs le mask binaire réel
@@ -258,7 +264,7 @@ def test_proba(config):
         ):
             if idx_img % 400 == 0:
                 logging.info(f"  - Predicting probabilities for mask {idx_img}")
-            image = dataset_train[idx_img][0].unsqueeze(0).to(device)
+            image = dataset_train[idx_img][0].unsqueeze(0).to(device, memory_format=torch.channels_last)
 
             if "segmentation_models_pytorch" in type(model).__module__:
                 # Cas segmentation_models_pytorch
@@ -295,8 +301,9 @@ def sub(config, use_tta=False):
     num_classes = input_size[0]
 
     logging.info("= Model")
+    inference=True
     model = utils.build_and_load_model(
-        model_config, input_size, num_classes, model_path, device
+        model_config, input_size, num_classes, model_path, device, inference
     )
 
     apply_sigmoid = model_config["encoder"]["model_name"] == "timm-regnety_032"
@@ -316,7 +323,7 @@ def sub(config, use_tta=False):
 
         for idx_patch in range(num_patches_x * num_patches_y):
             global_idx = base_idx + idx_patch
-            image = dataset_test[global_idx].unsqueeze(0).to(device)
+            image = dataset_test[global_idx].unsqueeze(0).to(device, memory_format=torch.channels_last)
 
             with torch.inference_mode():
                 prediction = model(image).squeeze(0)
@@ -380,8 +387,9 @@ def sub_ensemble(config):
         model_config = model_data["model"]
 
         # Construire et charger le modèle
+        inference=True
         model = utils.build_and_load_model(
-            model_config, input_size, num_classes, model_path, device
+            model_config, input_size, num_classes, model_path, device, inference
         )
 
         if use_tta:
@@ -408,7 +416,7 @@ def sub_ensemble(config):
                 x * y for x, y in dataset_test.image_patches[:image_idx]
             )  # Calcul de l'index global
 
-            image = dataset_test[global_idx].unsqueeze(0).to(device)
+            image = dataset_test[global_idx].unsqueeze(0).to(device, memory_format=torch.channels_last)
 
             # Moyenne des prédictions de tous les modèles
             predictions = [torch.sigmoid(model(image)) for model in models_list]

@@ -35,7 +35,7 @@ SMP_MODELS = {
 }
 
 
-def build_model(cfg, input_size, num_classes):
+def build_model(cfg, input_size, num_classes, inference: bool):
     model_class = cfg["class"]
     encoder_name = cfg["encoder"]["model_name"]
 
@@ -43,7 +43,8 @@ def build_model(cfg, input_size, num_classes):
     if model_class in SMP_MODELS:
         model_params = {
             "encoder_name": encoder_name,
-            "encoder_weights": "imagenet",
+            # in inference mode, no need to load pre-trained weight from imagenet.
+            "encoder_weights": None if inference else "imagenet",
             "in_channels": 1,  # Grayscale images
             "classes": 1,  # Binary segmentation
         }

@@ -106,7 +106,8 @@ def train(model, loader, f_loss, optimizer, device, dynamic_display=True):
     scaler = GradScaler("cuda")  # Initialiser le scaler pour la précision mixte
 
     for _i, (inputs, targets) in (pbar := tqdm.tqdm(enumerate(loader))):
-        inputs, targets = inputs.to(device), targets.to(device)
+        inputs = inputs.to(device, memory_format=torch.channels_last)
+        targets = targets.to(device)
 
         optimizer.zero_grad()  # Toujours remettre les gradients à zéro avant le passage avant
 
@@ -166,8 +167,8 @@ def test(model, loader, f_loss, device):
 
     with torch.inference_mode():
         for inputs, targets in loader:
-            inputs, targets = inputs.to(device), targets.to(device)
-
+            inputs = inputs.to(device, memory_format=torch.channels_last)
+            targets = targets.to(device)
             # Forward pass
             outputs = model(inputs).squeeze(1)
             loss = f_loss(outputs, targets)
@@ -210,13 +211,18 @@ def load_model_config(test_config):
         return yaml.safe_load(f)["model"]
 
 
-def build_and_load_model(model_config, input_size, num_classes, model_path, device):
-    model = models.build_model(model_config, input_size, num_classes)
-    model.to(device)
-    model.load_state_dict(
-        torch.load(model_path, map_location=device, weights_only=True)
-    )
-    model.eval()
+def build_and_load_model(
+    model_config, input_size, num_classes, device, inference, model_path=None
+):
+    model = models.build_model(model_config, input_size, num_classes, inference)
+    model.to(device, memory_format=torch.channels_last)
+    if inference:
+        if model_path is None:
+            raise ValueError("model_path must be provided in inference mode.")
+        model.load_state_dict(
+            torch.load(model_path, map_location=device, weights_only=True)
+        )
+        model.eval()
     return model
 
 
