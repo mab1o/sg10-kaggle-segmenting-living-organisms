@@ -221,21 +221,29 @@ def build_and_load_model(
     if not inference:
         # Augmente la limite du cache de compilation pour éviter des recompilations
         torch._dynamo.config.cache_size_limit = 512  
-        torch._dynamo.config.suppress_errors = False  # Mieux vaut voir les erreurs
-        torch._inductor.config.triton.cudagraphs = True  # Active CUDAGraphs pour max perf
-        torch._inductor.config.coordinate_descent_tuning = True  # Optimise la mémoire
+        torch._dynamo.config.suppress_errors = False  # Voir les erreurs pour debug
 
-        # Active la précision maximale des multiplications matricielles
+        # Réduit la pression mémoire en limitant l'usage des CUDAGraphs et en ajustant le tuning
+        torch._inductor.config.triton.cudagraphs = False  # Désactive CUDAGraphs pour éviter les problèmes de mémoire
+        torch._inductor.config.coordinate_descent_tuning = True  # Active l'optimisation mémoire
+
+        # Ajuste la précision des multiplications matricielles
         torch.set_float32_matmul_precision('high')  
 
-        # Compile avec les meilleures optimisations
+        # Fixe une limite stricte de mémoire partagée pour éviter les erreurs d’overflow
+        import os
+        os.environ["TORCHINDUCTOR_MAX_SHARED_MEMORY"] = "101376"  # Limite mémoire partagée
+
+        # Compile avec les meilleurs paramètres pour éviter les dsépassements mémoire
         model = torch.compile(
             model,
             backend="inductor",
-            mode="max-autotune-no-cudagraphs",  # Permet de maximiser les autotunes
+            mode="max-autotune",  # Permet de maximiser les autotunes sans forcer le graphe complet
             dynamic=False,  # Meilleure perf pour modèle statique
-            fullgraph=True  # Oblige la compilation complète en graphe
+            fullgraph=False  # Désactive fullgraph pour éviter les erreurs liées aux recompilations
         )
+
+
 
     if inference:
         if model_path is None:
