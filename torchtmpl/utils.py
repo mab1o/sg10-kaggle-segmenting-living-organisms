@@ -105,7 +105,7 @@ def train(model, loader, f_loss, optimizer, device, dynamic_display=True):
     num_samples = 0
     scaler = GradScaler("cuda")  # Initialiser le scaler pour la précision mixte
 
-    for _i, (inputs, targets) in (pbar := tqdm.tqdm(enumerate(loader))):
+    for i, (inputs, targets) in (pbar := tqdm.tqdm(enumerate(loader))):
         inputs = inputs.to(device, memory_format=torch.channels_last)
         targets = targets.to(device)
 
@@ -138,7 +138,8 @@ def train(model, loader, f_loss, optimizer, device, dynamic_display=True):
         # We here consider the loss is batch normalized
         total_loss += inputs.shape[0] * loss.item()
         num_samples += inputs.shape[0]
-        pbar.set_description(f"Train loss : {total_loss / num_samples:.4f}")
+        if i % 10 ==0:
+            pbar.set_description(f"Train loss : {total_loss / num_samples:.4f}")
     return total_loss / num_samples
 
 
@@ -216,6 +217,26 @@ def build_and_load_model(
 ):
     model = models.build_model(model_config, input_size, num_classes, inference)
     model.to(device, memory_format=torch.channels_last)
+
+    if not inference:
+        # Augmente la limite du cache de compilation pour éviter des recompilations
+        torch._dynamo.config.cache_size_limit = 512  
+        torch._dynamo.config.suppress_errors = False  # Mieux vaut voir les erreurs
+        torch._inductor.config.triton.cudagraphs = True  # Active CUDAGraphs pour max perf
+        torch._inductor.config.coordinate_descent_tuning = True  # Optimise la mémoire
+
+        # Active la précision maximale des multiplications matricielles
+        torch.set_float32_matmul_precision('high')  
+
+        # Compile avec les meilleures optimisations
+        model = torch.compile(
+            model,
+            backend="inductor",
+            mode="max-autotune-no-cudagraphs",  # Permet de maximiser les autotunes
+            dynamic=False,  # Meilleure perf pour modèle statique
+            fullgraph=True  # Oblige la compilation complète en graphe
+        )
+
     if inference:
         if model_path is None:
             raise ValueError("model_path must be provided in inference mode.")
@@ -223,6 +244,7 @@ def build_and_load_model(
             torch.load(model_path, map_location=device, weights_only=True)
         )
         model.eval()
+
     return model
 
 

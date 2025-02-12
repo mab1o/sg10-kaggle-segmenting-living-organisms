@@ -98,6 +98,7 @@ def train(config):
     # Afficher dans le terminal avec logging
     logging.info(f"Transformations appliquées : {chosen_transforms}")
 
+    """
     # Make a summary script of the experiment
     logging.info("= Summary")
     summary_text = (
@@ -121,7 +122,8 @@ def train(config):
         f.write(summary_text)
     if wandb_log is not None:
         wandb.log({"summary": summary_text})
-
+    """
+    
     # Initialisation du checkpointing
     model_checkpoint = utils.ModelCheckpoint(
         model, str(logdir / "best_model.pt"), min_is_best=False
