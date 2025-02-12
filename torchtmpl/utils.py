@@ -138,8 +138,8 @@ def train(model, loader, f_loss, optimizer, device, dynamic_display=True):
         # We here consider the loss is batch normalized
         total_loss += inputs.shape[0] * loss.item()
         num_samples += inputs.shape[0]
-        if i % 10 ==0:
-            pbar.set_description(f"Train loss : {total_loss / num_samples:.4f}")
+        # if i % 10 ==0:
+        pbar.set_description(f"Train loss : {total_loss / num_samples:.4f}")
     return total_loss / num_samples
 
 
@@ -238,8 +238,8 @@ def build_and_load_model(
         model = torch.compile(
             model,
             backend="inductor",
-            mode="max-autotune",  # Permet de maximiser les autotunes sans forcer le graphe complet
-            dynamic=False,  # Meilleure perf pour modèle statique
+            mode="reduce-overhead",   # <- Évite le tuning trop massif
+            dynamic=True,             # <- Autorise différentes formes de batch
             fullgraph=False  # Désactive fullgraph pour éviter les erreurs liées aux recompilations
         )
 
