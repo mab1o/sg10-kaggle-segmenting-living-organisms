@@ -233,10 +233,10 @@ def build_and_load_model(
 
         # Réduit la pression mémoire en limitant l'usage des CUDAGraphs et en ajustant le tuning
         torch._inductor.config.triton.cudagraphs = (
-            False  # Désactive CUDAGraphs pour éviter les problèmes de mémoire
+            True  # Désactive CUDAGraphs pour éviter les problèmes de mémoire
         )
         torch._inductor.config.coordinate_descent_tuning = (
-            True  # Active l'optimisation mémoire
+            False  # Active l'optimisation mémoire
         )
 
         # Ajuste la précision des multiplications matricielles
