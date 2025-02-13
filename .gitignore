@@ -11,6 +11,9 @@ job.sbatch
 configs/
 logslurms
 
+# configs files
+*yaml
+
 # Distribution / packaging
 .Python
 build/

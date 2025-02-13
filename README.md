@@ -16,14 +16,13 @@ source $TMPDIR/venv/bin/activate
 python -m pip install .
 ```
 
-2. Run a training :
+2. Run a training : ([config file example](docs/config_train_example.yml))
 
 ```bash
 python -m torchtmpl.main train_yaml/{yaml_name}.yaml train
 ```
 
-3. Create the submission.csv
-
+3. Create the submission.csv ([config file example](docs/config_inference_example.yml))
 ```bash
 python -m torchtmpl.main inference.yaml sub
 ```
