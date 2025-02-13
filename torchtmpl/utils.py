@@ -213,12 +213,12 @@ def load_model_config(test_config):
 
 
 def build_and_load_model(
-    model_config, input_size, num_classes, device, inference, model_path=None
+    model_config, input_size, num_classes, device, inference, model_path=None, compile=True
 ):
     model = models.build_model(model_config, input_size, num_classes, inference)
     model.to(device, memory_format=torch.channels_last)
 
-    if not inference:
+    if not inference and compile:
         # Augmente la limite du cache de compilation pour éviter des recompilations
         torch._dynamo.config.cache_size_limit = 512  
         torch._dynamo.config.suppress_errors = True  # n'applique pas la compilation sur les formes problématiques
@@ -239,7 +239,7 @@ def build_and_load_model(
             model,
             backend="inductor",
             mode="default",   # <- Évite le tuning trop massif
-            dynamic=True,             # <- Autorise différentes formes de batch
+            dynamic=False,             # <- Autorise différentes formes de batch
             fullgraph=False  # Désactive fullgraph pour éviter les erreurs liées aux recompilations
         )
 
