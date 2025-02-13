@@ -254,7 +254,7 @@ def build_and_load_model(
             model,
             backend="inductor",
             mode="default",  # <- Évite le tuning trop massif
-            dynamic=True,  # <- Autorise différentes formes de batch
+            dynamic=False,  # <- Autorise différentes formes de batch
             fullgraph=False,  # Désactive fullgraph pour éviter les erreurs liées aux recompilations
         )
 
