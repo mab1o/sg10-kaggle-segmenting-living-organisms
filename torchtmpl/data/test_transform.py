@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 # Local imports
 from torchtmpl.data.planktonds import PlanktonDataset
 
+# TODO: move test_tranform in main
 train_transform = A.Compose(
     [
         A.VerticalFlip(p=0.5),

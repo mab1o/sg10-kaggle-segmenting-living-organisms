@@ -79,6 +79,7 @@ def show_image_mask_from(
     _show_image_mask_given(img, mask, image_name)
 
 
+# TODO: check function
 def show_mask_predict_compare_to_real(
     ds: planktonds.PlanktonDataset, idx, real_dataset, image_name="compare_mask.png"
 ):
@@ -151,6 +152,7 @@ def show_tensor_image_given(x):
     plt.show()
 
 
+# TODO separate concerne of show and Estimate the best threshold
 def show_predicted_mask_proba_vs_real_mask_binary(
     ds: planktonds.PlanktonDataset,
     idx: int,
@@ -242,6 +244,7 @@ def show_predicted_mask_proba_vs_real_mask_binary(
     logging.info(f"Saved probability vs real mask comparison to {image_name}")
 
 
+# TODO separate concerne of heat map and show map
 def show_validation_image_vs_predicted_mask(
     ds: planktonds.PlanktonDataset,
     idx: int,
