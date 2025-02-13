@@ -225,7 +225,7 @@ def build_and_load_model(
 
         # Réduit la pression mémoire en limitant l'usage des CUDAGraphs et en ajustant le tuning
         torch._inductor.config.triton.cudagraphs = False  # Désactive CUDAGraphs pour éviter les problèmes de mémoire
-        torch._inductor.config.coordinate_descent_tuning = True  # Active l'optimisation mémoire
+        torch._inductor.config.coordinate_descent_tuning = False  # Active l'optimisation mémoire
 
         # Ajuste la précision des multiplications matricielles
         torch.set_float32_matmul_precision('high')  
@@ -238,7 +238,7 @@ def build_and_load_model(
         model = torch.compile(
             model,
             backend="inductor",
-            mode="reduce-overhead",   # <- Évite le tuning trop massif
+            mode="default",   # <- Évite le tuning trop massif
             dynamic=True,             # <- Autorise différentes formes de batch
             fullgraph=False  # Désactive fullgraph pour éviter les erreurs liées aux recompilations
         )
