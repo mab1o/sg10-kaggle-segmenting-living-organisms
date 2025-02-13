@@ -160,7 +160,11 @@ def get_transforms(transform_type="light"):  # noqa: C901
             A.GaussianBlur(blur_limit=(1, 3), p=0.1),
             A.RandomBrightnessContrast(brightness_limit=0.1, contrast_limit=0.1, p=0.2),
             A.CoarseDropout(
-                max_holes=2, max_height=15, max_width=15, fill_value=0, p=0.08
+                num_holes_range=(1, 2),      # équivalent à max_holes=2
+                hole_height_range=(15, 15),   # hauteur fixe de 15
+                hole_width_range=(15, 15),    # largeur fixe de 15
+                fill_value=0,
+                p=0.08
             ),
         ])
 
@@ -180,7 +184,11 @@ def get_transforms(transform_type="light"):  # noqa: C901
             ),
             A.GaussNoise(var_limit=(5.0, 25.0), p=0.15),
             A.CoarseDropout(
-                max_holes=3, max_height=20, max_width=20, fill_value=0, p=0.1
+                num_holes_range=(1, 3),      # équivalent à max_holes=3
+                hole_height_range=(20, 20),   # hauteur fixe de 20
+                hole_width_range=(20, 20),    # largeur fixe de 20
+                fill_value=0,
+                p=0.1
             ),
         ])
 
@@ -199,7 +207,11 @@ def get_transforms(transform_type="light"):  # noqa: C901
             A.RandomBrightnessContrast(brightness_limit=0.2, contrast_limit=0.2, p=0.3),
             A.GaussNoise(var_limit=(10.0, 40.0), p=0.2),
             A.CoarseDropout(
-                max_holes=4, max_height=25, max_width=25, fill_value=0, p=0.15
+                num_holes_range=(1, 4),      # équivalent à max_holes=4
+                hole_height_range=(25, 25),   # hauteur fixe de 25
+                hole_width_range=(25, 25),    # largeur fixe de 25
+                fill_value=0,
+                p=0.15
             ),
         ])
 
