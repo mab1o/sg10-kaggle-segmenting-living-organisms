@@ -6,7 +6,8 @@ import pathlib
 import sys
 
 import torch
-import torchinfo.torchinfo as torchinfo
+
+# import torchinfo.torchinfo as torchinfo
 import wandb
 
 # External imports
@@ -46,9 +47,10 @@ def train(config):
     # Build the model
     logging.info("= Model")
     model_config = config["model"]
-    inference=False
+    inference = False
+    compile = True
     model = utils.build_and_load_model(
-        model_config, input_size, num_classes, device, inference
+        model_config, input_size, num_classes, device, inference, compile
     )
     # Charger le modèle pré-entraîné si un chemin est spécifié
     if "pretrained_model" in config and os.path.exists(config["pretrained_model"]):
@@ -123,7 +125,7 @@ def train(config):
     if wandb_log is not None:
         wandb.log({"summary": summary_text})
     """
-    
+
     # Initialisation du checkpointing
     model_checkpoint = utils.ModelCheckpoint(
         model, str(logdir / "best_model.pt"), min_is_best=False
@@ -180,7 +182,7 @@ def test(config):
     num_classes = input_size[0]
 
     logging.info("= Model")
-    inference=True
+    inference = True
     model = utils.build_and_load_model(
         model_config, input_size, num_classes, model_path, device, inference
     )
@@ -193,7 +195,11 @@ def test(config):
         ):
             if idx_img % 400 == 0:
                 logging.info(f"  - Predicting mask {idx_img}")
-            image = dataset_test[idx_img].unsqueeze(0).to(device, memory_format=torch.channels_last)
+            image = (
+                dataset_test[idx_img]
+                .unsqueeze(0)
+                .to(device, memory_format=torch.channels_last)
+            )
             dataset_test.insert(model.predict(image))
 
     print(dataset_test.mask_files[0][0])
@@ -247,7 +253,7 @@ def test_proba(config):
     num_classes = input_size[0]
 
     logging.info("= Model")
-    inference=True
+    inference = True
     model = utils.build_and_load_model(
         model_config, input_size, num_classes, model_path, device, inference
     )
@@ -266,7 +272,11 @@ def test_proba(config):
         ):
             if idx_img % 400 == 0:
                 logging.info(f"  - Predicting probabilities for mask {idx_img}")
-            image = dataset_train[idx_img][0].unsqueeze(0).to(device, memory_format=torch.channels_last)
+            image = (
+                dataset_train[idx_img][0]
+                .unsqueeze(0)
+                .to(device, memory_format=torch.channels_last)
+            )
 
             if "segmentation_models_pytorch" in type(model).__module__:
                 # Cas segmentation_models_pytorch
@@ -303,7 +313,7 @@ def sub(config, use_tta=False):
     num_classes = input_size[0]
 
     logging.info("= Model")
-    inference=True
+    inference = True
     model = utils.build_and_load_model(
         model_config, input_size, num_classes, model_path, device, inference
     )
@@ -325,7 +335,11 @@ def sub(config, use_tta=False):
 
         for idx_patch in range(num_patches_x * num_patches_y):
             global_idx = base_idx + idx_patch
-            image = dataset_test[global_idx].unsqueeze(0).to(device, memory_format=torch.channels_last)
+            image = (
+                dataset_test[global_idx]
+                .unsqueeze(0)
+                .to(device, memory_format=torch.channels_last)
+            )
 
             with torch.inference_mode():
                 prediction = model(image).squeeze(0)
@@ -389,7 +403,7 @@ def sub_ensemble(config):
         model_config = model_data["model"]
 
         # Construire et charger le modèle
-        inference=True
+        inference = True
         model = utils.build_and_load_model(
             model_config, input_size, num_classes, model_path, device, inference
         )
@@ -418,7 +432,11 @@ def sub_ensemble(config):
                 x * y for x, y in dataset_test.image_patches[:image_idx]
             )  # Calcul de l'index global
 
-            image = dataset_test[global_idx].unsqueeze(0).to(device, memory_format=torch.channels_last)
+            image = (
+                dataset_test[global_idx]
+                .unsqueeze(0)
+                .to(device, memory_format=torch.channels_last)
+            )
 
             # Moyenne des prédictions de tous les modèles
             predictions = [torch.sigmoid(model(image)) for model in models_list]

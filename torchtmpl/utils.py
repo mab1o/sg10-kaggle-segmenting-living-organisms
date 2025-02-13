@@ -105,7 +105,7 @@ def train(model, loader, f_loss, optimizer, device, dynamic_display=True):
     num_samples = 0
     scaler = GradScaler("cuda")  # Initialiser le scaler pour la précision mixte
 
-    for i, (inputs, targets) in (pbar := tqdm.tqdm(enumerate(loader))):
+    for _i, (inputs, targets) in (pbar := tqdm.tqdm(enumerate(loader))):
         inputs = inputs.to(device, memory_format=torch.channels_last)
         targets = targets.to(device)
 
@@ -213,37 +213,50 @@ def load_model_config(test_config):
 
 
 def build_and_load_model(
-    model_config, input_size, num_classes, device, inference, model_path=None, compile=True
+    model_config,
+    input_size,
+    num_classes,
+    device,
+    inference,
+    model_path=None,
+    compile=True,
 ):
     model = models.build_model(model_config, input_size, num_classes, inference)
     model.to(device, memory_format=torch.channels_last)
 
     if not inference and compile:
         # Augmente la limite du cache de compilation pour éviter des recompilations
-        torch._dynamo.config.cache_size_limit = 512  
-        torch._dynamo.config.suppress_errors = True  # n'applique pas la compilation sur les formes problématiques
+        torch._dynamo.config.cache_size_limit = 512
+        torch._dynamo.config.suppress_errors = (
+            True  # n'applique pas la compilation sur les formes problématiques
+        )
 
         # Réduit la pression mémoire en limitant l'usage des CUDAGraphs et en ajustant le tuning
-        torch._inductor.config.triton.cudagraphs = False  # Désactive CUDAGraphs pour éviter les problèmes de mémoire
-        torch._inductor.config.coordinate_descent_tuning = False  # Active l'optimisation mémoire
+        torch._inductor.config.triton.cudagraphs = (
+            False  # Désactive CUDAGraphs pour éviter les problèmes de mémoire
+        )
+        torch._inductor.config.coordinate_descent_tuning = (
+            True  # Active l'optimisation mémoire
+        )
 
         # Ajuste la précision des multiplications matricielles
-        torch.set_float32_matmul_precision('high')  
+        torch.set_float32_matmul_precision("high")
 
         # Fixe une limite stricte de mémoire partagée pour éviter les erreurs d’overflow
         import os
-        os.environ["TORCHINDUCTOR_MAX_SHARED_MEMORY"] = "101376"  # Limite mémoire partagée
+
+        os.environ["TORCHINDUCTOR_MAX_SHARED_MEMORY"] = (
+            "101376"  # Limite mémoire partagée
+        )
 
         # Compile avec les meilleurs paramètres pour éviter les dsépassements mémoire
         model = torch.compile(
             model,
             backend="inductor",
-            mode="default",   # <- Évite le tuning trop massif
-            dynamic=False,             # <- Autorise différentes formes de batch
-            fullgraph=False  # Désactive fullgraph pour éviter les erreurs liées aux recompilations
+            mode="default",  # <- Évite le tuning trop massif
+            dynamic=True,  # <- Autorise différentes formes de batch
+            fullgraph=False,  # Désactive fullgraph pour éviter les erreurs liées aux recompilations
         )
-
-
 
     if inference:
         if model_path is None:
