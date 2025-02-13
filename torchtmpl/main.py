@@ -89,8 +89,12 @@ def train(config):
         artifact.add_file(str(config_path))
         wandb.log_artifact(artifact)
 
-    chosen_transforms = data.get_transforms(config["data"]["transform_type"])
-    logging.info(f"Niveau de transformation: {(config['data']['transform_type'])}")
+    chosen_transforms = data.get_transforms(
+        config["data"].get("transform_type", "light")
+    )
+    logging.info(
+        f"Niveau de transformation: {(config['data'].get('transform_type', 'light'))}"
+    )
     # Afficher dans le terminal avec logging
     logging.info(f"Transformations appliquées : {chosen_transforms}")
 

@@ -2,11 +2,11 @@ data:
   root_dir: '/mounts/Datasets3/2024-2025-ChallengePlankton/'
   trainpath: '/mounts/Datasets3/2024-2025-ChallengePlankton/train/'
   testpath: '/mounts/Datasets3/2024-2025-ChallengePlankton/test/'
-  batch_size: 64
+  batch_size: 2
   num_workers: 8
   valid_ratio: 0.2
   patch_size: [256,256]
-  quick_test: false
+  quick_test: true
   augmented_data: true
 
 optim:
@@ -38,6 +38,6 @@ logging:
   logdir: "./logs"
 
 model:
-  class: UNet
+  class: EfficientNetB3Segmentation
   encoder:
     model_name: resnet18

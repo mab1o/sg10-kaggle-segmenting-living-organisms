@@ -36,6 +36,13 @@ class TverskyLoss(nn.Module):
         # Convert logits to probabilities
         inputs = torch.sigmoid(inputs)
 
+        # Check dimenssion is (B, C, H, W) and not (B, H, W)
+        if inputs.ndimension() == 3:
+            inputs = inputs.unsqueeze(1)
+
+        if targets.ndimension() == 3:
+            targets = targets.unsqueeze(1)
+
         # Compute TP, FP, FN
         tp = (inputs * targets).sum(dim=(1, 2, 3))  # Sum over spatial dimensions
         fp = ((1 - targets) * inputs).sum(dim=(1, 2, 3))
