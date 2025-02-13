@@ -7,7 +7,7 @@ data:
   valid_ratio: 0.1
   patch_size: [320, 320]
   quick_test: False
-  transform_type: "fine-details"
+  transform_type: "light-optimal"
 
 optim:
   algo: AdamW
@@ -22,13 +22,13 @@ scheduler:
     T_mult: 2
     eta_min: 0.000001
 
-nepochs: 50
+nepochs: 100
 pos_weight: 1
 
 loss:
   name: "TverskyLoss"
-  alpha: 0.55  # Optimisé pour préserver les détails fins
-  beta: 0.45
+  alpha: 0.6  # Optimisé pour préserver les détails fins
+  beta: 0.4
 
 logging:
   wandb:
