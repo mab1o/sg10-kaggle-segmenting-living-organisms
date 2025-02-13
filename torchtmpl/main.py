@@ -5,15 +5,14 @@ import os
 import pathlib
 import sys
 
+# External imports
 import torch
 import torchinfo.torchinfo as torchinfo
 import wandb
-
-# External imports
 import yaml
 
 # Local imports
-from . import data, models, optim, utils
+from . import data, models, utils, optim
 from .utils import amp_autocast
 
 if torch.cuda.is_available():
@@ -59,7 +58,7 @@ def train(config):
 
     # Build the loss
     logging.info("= Loss")
-    loss = optim.get_loss(config["loss"]["name"], config["loss"], device)
+    loss = optim.get_loss(config["loss"]["name"], config["loss"])
 
     # Build the optimizer
     logging.info("= Optimizer")
