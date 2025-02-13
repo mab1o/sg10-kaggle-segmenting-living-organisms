@@ -221,7 +221,7 @@ def build_and_load_model(
     if not inference:
         # Augmente la limite du cache de compilation pour éviter des recompilations
         torch._dynamo.config.cache_size_limit = 512  
-        torch._dynamo.config.suppress_errors = False  # Voir les erreurs pour debug
+        torch._dynamo.config.suppress_errors = True  # n'applique pas la compilation sur les formes problématiques
 
         # Réduit la pression mémoire en limitant l'usage des CUDAGraphs et en ajustant le tuning
         torch._inductor.config.triton.cudagraphs = False  # Désactive CUDAGraphs pour éviter les problèmes de mémoire
