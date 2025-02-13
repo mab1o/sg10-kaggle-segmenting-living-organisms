@@ -277,8 +277,9 @@ def test_proba(config):
 
 # TODO: merge sub and sub ensemble to a only function
 @amp_autocast
-def sub(config, use_tta=False):
+def sub(config):
     device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
+    use_tta = config.get("use_tta", True)
     model_path = os.path.join(
         config["test"]["model_path"], config["test"]["model_name"]
     )
@@ -336,6 +337,7 @@ def sub(config, use_tta=False):
 def sub_ensemble(config):
     """Effectue une prédiction par ensemble de modèles."""
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    use_tta = config.get("use_tta", True)
 
     logging.info("= Dataset")
     dataset_test = data.PlanktonDataset(
@@ -441,21 +443,10 @@ if __name__ == "__main__":
         help="Command to execute",
     )
 
-    # TODO: move concerne in the config file
-    parser.add_argument(
-        "--tta", action="store_true", help="Enable Test-Time Augmentation (TTA)"
-    )  # Par défaut, False
     args = parser.parse_args()
 
     logging.info(f"Loading configuration from {args.config}")
     with open(args.config) as f:
         config = yaml.safe_load(f)
 
-    # activer avec --tta, sinon désactivé
-    use_tta = args.tta
-
-    # Exécuter la commande demandée
-    if args.command == "sub":
-        sub(config, use_tta)
-    else:
-        eval(f"{args.command}(config)")
+    eval(f"{args.command}(config)")

@@ -14,3 +14,4 @@ test:
   use_train: false # Set to true to add extra visualization in test and test_proba
   ensemble_model_dir: "ensemble_models/"  # Charge tous les modèles de ce dossier
   threshold: 0.5  # Seuil de binarisation des prédictions moyennes
+  tta: True
