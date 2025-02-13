@@ -5,15 +5,14 @@ import os
 import pathlib
 import sys
 
+# External imports
 import torch
 import torchinfo.torchinfo as torchinfo
 import wandb
-
-# External imports
 import yaml
 
 # Local imports
-from . import data, models, optim, utils
+from . import data, models, utils, optim
 from .utils import amp_autocast
 
 if torch.cuda.is_available():
@@ -46,6 +45,7 @@ def train(config):
     model = models.build_model(model_config, input_size, num_classes)
     model.to(device)
 
+    # TODO : change this part to its own function
     # Charger le modèle pré-entraîné si un chemin est spécifié
     if "pretrained_model" in config and os.path.exists(config["pretrained_model"]):
         logging.info(f"Loading pretrained model from {config['pretrained_model']}")
@@ -59,7 +59,7 @@ def train(config):
 
     # Build the loss
     logging.info("= Loss")
-    loss = optim.get_loss(config["loss"]["name"], config["loss"], device)
+    loss = optim.get_loss(config["loss"]["name"], config["loss"])
 
     # Build the optimizer
     logging.info("= Optimizer")
@@ -89,8 +89,13 @@ def train(config):
         artifact.add_file(str(config_path))
         wandb.log_artifact(artifact)
 
-    chosen_transforms = data.get_transforms(config["data"]["transform_type"])
-    logging.info(f"Niveau de transformation: {(config['data']['transform_type'])}")
+    # TODO: change this ligne to its right file
+    chosen_transforms = data.get_transforms(
+        config["data"].get("transform_type", "light")
+    )
+    logging.info(
+        f"Niveau de transformation: {(config['data'].get('transform_type', 'light'))}"
+    )
     # Afficher dans le terminal avec logging
     logging.info(f"Transformations appliquées : {chosen_transforms}")
 
@@ -154,6 +159,8 @@ def train(config):
             })
 
 
+# TODO: merge test proba and test
+# TODO : check usage of amp_autocast
 @amp_autocast
 def test(config):
     """Visualize and validate results with binary prediction."""
@@ -216,6 +223,7 @@ def test(config):
     # ---------------------------------------------------------
 
 
+# TODO: merge test proba and test
 @amp_autocast
 def test_proba(config):
     """Visualize and validate results with binary prediction."""
@@ -277,6 +285,7 @@ def test_proba(config):
     )
 
 
+# TODO: merge sub and sub ensemble to a only function
 @amp_autocast
 def sub(config, use_tta=False):
     device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
@@ -332,6 +341,7 @@ def sub(config, use_tta=False):
     dataset_test.to_submission()
 
 
+# TODO: merge sub and sub ensemble to a only function
 @amp_autocast
 def sub_ensemble(config):
     """Effectue une prédiction par ensemble de modèles."""
@@ -440,6 +450,8 @@ if __name__ == "__main__":
         choices=["train", "test", "test_proba", "sub", "sub_ensemble"],
         help="Command to execute",
     )
+
+    # TODO: move concerne in the config file
     parser.add_argument(
         "--tta", action="store_true", help="Enable Test-Time Augmentation (TTA)"
     )  # Par défaut, False

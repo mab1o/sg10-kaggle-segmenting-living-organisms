@@ -5,8 +5,13 @@ import torch.nn.functional as F
 
 
 class EfficientNetB3Segmentation(nn.Module):
-    def __init__(self, input_channels, num_classes):
+    def __init__(self, cfg, input_size, num_classes):
         super().__init__()
+
+        # Args normalised with other models
+        cfg = None
+        input_channels = input_size[0]
+
         # Load EfficientNet-B3 encoder from timm
         self.encoder = timm.create_model(
             "efficientnet_b3",
