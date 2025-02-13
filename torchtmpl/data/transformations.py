@@ -163,7 +163,7 @@ def get_transforms(transform_type="light"):  # noqa: C901
                 num_holes_range=(1, 2),      # équivalent à max_holes=2
                 hole_height_range=(15, 15),   # hauteur fixe de 15
                 hole_width_range=(15, 15),    # largeur fixe de 15
-                fill_value=0,
+                fill=0,
                 p=0.08
             ),
         ])
@@ -187,7 +187,7 @@ def get_transforms(transform_type="light"):  # noqa: C901
                 num_holes_range=(1, 3),      # équivalent à max_holes=3
                 hole_height_range=(20, 20),   # hauteur fixe de 20
                 hole_width_range=(20, 20),    # largeur fixe de 20
-                fill_value=0,
+                fill=0,
                 p=0.1
             ),
         ])
@@ -210,10 +210,89 @@ def get_transforms(transform_type="light"):  # noqa: C901
                 num_holes_range=(1, 4),      # équivalent à max_holes=4
                 hole_height_range=(25, 25),   # hauteur fixe de 25
                 hole_width_range=(25, 25),    # largeur fixe de 25
-                fill_value=0,
+                fill=0,
                 p=0.15
             ),
         ])
+
+    
+
+
+
+    elif transform_type == "medium-optimal":
+        return A.Compose([
+            A.Affine(
+                scale=(0.94, 1.06),
+                translate_percent=(0.025, 0.025),
+                rotate=(-6, 6),
+                shear=(-2, 2),  # Ajout d'un léger cisaillement
+                p=0.65,
+            ),
+            A.VerticalFlip(p=0.4),
+            A.HorizontalFlip(p=0.45),
+            A.RandomBrightnessContrast(
+                brightness_limit=0.1, contrast_limit=0.1, p=0.15
+            ),  # Ajustement léger de la luminosité et du contraste
+            A.MotionBlur(blur_limit=3, p=0.06),
+            A.ElasticTransform(
+                alpha=1, sigma=30, alpha_affine=20, p=0.1
+            ),  # Déformation élastique légère pour simuler de petites variations
+            A.CoarseDropout(
+                num_holes_range=(2, 3),
+                hole_height_range=(10, 18),
+                hole_width_range=(10, 18),
+                fill=0,
+                p=0.06,
+            ),
+        ])
+
+
+    elif transform_type == "light-optimal":
+        return A.Compose([
+            A.Affine(
+                scale=(0.97, 1.03),               # Variation très légère d'échelle
+                translate_percent=(0.01, 0.01),     # Très petites translations
+                rotate=(-3, 3),                   # Petite rotation
+                p=0.5,
+            ),
+            A.VerticalFlip(p=0.3),
+            A.HorizontalFlip(p=0.3),
+            A.RandomBrightnessContrast(
+                brightness_limit=0.05, contrast_limit=0.05, p=0.15
+            ),
+        ])
+
+    elif transform_type == "heavy-optimal":
+        return A.Compose([
+            A.Affine(
+                scale=(0.90, 1.10),               # Variation plus importante d'échelle
+                translate_percent=(0.04, 0.04),     # Translations plus marquées
+                rotate=(-12, 12),                 # Rotation étendue
+                shear=(-5, 5),                    # Ajout d'un léger cisaillement
+                p=0.75,
+            ),
+            A.VerticalFlip(p=0.55),
+            A.HorizontalFlip(p=0.55),
+            A.RandomBrightnessContrast(
+                brightness_limit=0.2, contrast_limit=0.2, p=0.3
+            ),
+            A.GridDistortion(
+                num_steps=5, distort_limit=0.1, p=0.3
+            ),
+            A.ElasticTransform(
+                alpha=2, sigma=30, alpha_affine=20, p=0.3
+            ),
+            A.CoarseDropout(
+                num_holes_range=(2, 4),
+                hole_height_range=(15, 25),
+                hole_width_range=(15, 25),
+                fill=0,
+                p=0.15,
+            ),
+            A.MotionBlur(blur_limit=5, p=0.1),
+        ])
+
+
 
     # Default to light if incorrect input
     print("No transformation selected")
