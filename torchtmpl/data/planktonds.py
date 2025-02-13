@@ -17,7 +17,7 @@ class PlanktonDataset(Dataset):
         patch_size,
         mode="train",
         transform=None,
-        apply_transform=True,
+        apply_transform=False,
     ):
         """Initialize the PlanktonDataset.
 
@@ -40,7 +40,7 @@ class PlanktonDataset(Dataset):
 
         self.mode = mode
         self.transform = transform
-        self.apply_transform = apply_transform  # Nouveau paramètre pour désactiver les transformations sur valid
+        self.apply_transform = apply_transform
         self.image_mask_dir = image_mask_dir
         self.patch_size = patch_size
         self.image_files = sorted([
