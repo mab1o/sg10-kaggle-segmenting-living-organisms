@@ -1,5 +1,6 @@
 import torch
 import torch.nn as nn
+import logging
 
 
 class FocalTverskyLoss(nn.Module):
@@ -42,7 +43,7 @@ class FocalTverskyLoss(nn.Module):
             torch.isnan(focal_tversky_loss).any()
             or torch.isinf(focal_tversky_loss).any()
         ):
-            print(f"NaN/Inf detected: Tversky Index={tversky_index}")
+            logging.info(f"NaN/Inf detected: Tversky Index={tversky_index}")
 
         return (
             focal_tversky_loss.mean()

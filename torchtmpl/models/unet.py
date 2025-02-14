@@ -1,4 +1,5 @@
 # Standard imports
+import logging
 
 # External imports
 import timm
@@ -132,13 +133,13 @@ def test_timm():
     x = model.maxpool(x)
 
     f1 = model.layer1(x)
-    print(f"dim of f1 : {f1.shape}")
+    logging.info(f"dim of f1 : {f1.shape}")
     f2 = model.layer2(f1)
-    print(f"dim of f2 : {f2.shape}")
+    logging.info(f"dim of f2 : {f2.shape}")
     f3 = model.layer3(f2)
-    print(f"dim of f3 : {f3.shape}")
+    logging.info(f"dim of f3 : {f3.shape}")
     f4 = model.layer4(f3)
-    print(f"dim of f4 : {f4.shape}")
+    logging.info(f"dim of f4 : {f4.shape}")
 
 
 def test_unet():
@@ -153,13 +154,13 @@ def test_unet():
     model.eval()
     y = model(x)
 
-    print(f"Output shape : {y.shape}")
+    logging.info(f"Output shape : {y.shape}")
     assert y.shape == (1, num_classes, input_size[1], input_size[2])
-    print(f"first row : {y[0, :, 0, :]}")
+    logging.info(f"first row : {y[0, :, 0, :]}")
 
     y = model.predict(x)
-    print(f"Predict output shape: {y.shape}")
-    print(f"first row : {y[0]}")
+    logging.info(f"Predict output shape: {y.shape}")
+    logging.info(f"first row : {y[0]}")
 
 
 if __name__ == "__main__":
