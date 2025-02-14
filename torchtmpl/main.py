@@ -2,17 +2,15 @@
 import argparse
 import logging
 import os
-import pathlib
 import sys
 
 # External imports
 import torch
-import torchinfo.torchinfo as torchinfo
 import wandb
 import yaml
 
 # Local imports
-from . import data, models, utils, optim
+from . import data, models, optim, utils
 from .utils import amp_autocast
 
 if torch.cuda.is_available():
@@ -69,49 +67,10 @@ def train(config):
     logging.info("= Scheduler")
     scheduler = optim.get_scheduler(optimizer, config["scheduler"])
 
-    # Build the logging directory
-    logdir = pathlib.Path(
-        utils.generate_unique_logpath(
-            config["logging"]["logdir"], model_config["class"]
-        )
+    # Create dir to save all informations and the weight of the model
+    logdir = utils.create_doc_save_model(
+        config, wandb_log, train_loader, valid_loader, model_config, model, loss
     )
-    logdir.mkdir(parents=True, exist_ok=True)
-    logging.info(f"Will be logging into {logdir}")
-
-    # Sauvegarde locale du fichier config.yaml
-    config_path = logdir / "config.yaml"
-    with open(config_path, "w") as file:
-        yaml.dump(config, file)
-
-    # Ajout du config.yaml en tant qu'Artifact dans WandB (uniquement si wandb est activé)
-    if wandb_log is not None:
-        artifact = wandb.Artifact("config", type="config")
-        artifact.add_file(str(config_path))
-        wandb.log_artifact(artifact)
-
-    # Make a summary script of the experiment
-    logging.info("= Summary")
-    summary_text = (
-        f"Logdir : {logdir}\n"
-        + "## Command \n"
-        + " ".join(sys.argv)
-        + "\n\n"
-        + f" Config : {config} \n\n"
-        + (f" Wandb run name : {wandb.run.name}\n\n" if wandb_log else "")
-        + "## Summary of the model architecture\n"
-        + f"{torchinfo.summary(model, input_size=next(iter(train_loader))[0].shape)}\n\n"
-        + "## Loss\n\n"
-        + f"{loss}\n\n"
-        + "## Datasets : \n"
-        + f"Train : {train_loader.dataset.dataset}\n"
-        + f"Validation : {valid_loader.dataset.dataset}"
-    )
-
-    # Écriture du résumé de l'expérience
-    with open(logdir / "summary.txt", "w") as f:
-        f.write(summary_text)
-    if wandb_log is not None:
-        wandb.log({"summary": summary_text})
 
     # Initialisation du checkpointing
     model_checkpoint = utils.ModelCheckpoint(
@@ -121,13 +80,13 @@ def train(config):
     logging.info("= Start training")
     for e in range(config["nepochs"]):
         # Train 1 epoch
-        train_loss = utils.train(model, train_loader, loss, optimizer, device)
+        train_loss = utils.train(
+            model, train_loader, loss, optimizer, scheduler, device
+        )
 
         test_loss, test_f1, test_precision, test_recall = utils.test(
             model, valid_loader, loss, device
         )
-
-        scheduler.step()  # fonctionnement du scheduler.
 
         # Mise à jour du checkpoint si meilleur F1-score
         updated = model_checkpoint.update(test_f1)
@@ -274,183 +233,52 @@ def test_proba(config):
     )
 
 
-# TODO: merge sub and sub ensemble to a only function
-"""
 @amp_autocast
 def sub(config):
-    device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
-    use_tta = config.get("use_tta", True)
-    models_path = [
-        os.path.join(model, config["test"]["model_name"])
-        for model in config["test"]["model_path"]
-    ]
-
-    model_config = utils.load_model_config(config["test"])
-
-    logging.info("= Dataset")
-    dataset_test = data.PlanktonDataset(
-        config["data"]["testpath"], config["data"]["patch_size"], mode="test"
-    )
-    logging.info(f"  -  number of sample: {len(dataset_test)}")
-    input_size = tuple(dataset_test[0].shape)
-    num_classes = input_size[0]
-
-    logging.info("= Model")
-    models = [
-        utils.build_and_load_model(
-            model_config, input_size, num_classes, model_path, device
-        )
-        for model_path in models_path
-    ]
-
-    apply_sigmoid = model_config["encoder"]["model_name"] == "timm-regnety_032"
-
-    if use_tta:
-        models = [utils.apply_tta(model, use_tta) for model in models]
-
-    logging.info("= Predict masks for all test images")
-    for image_idx, (num_patches_x, num_patches_y) in enumerate(
-        dataset_test.image_patches
-    ):
-        logging.info(f"Predicting patches for image {image_idx}")
-        base_idx = sum(
-            x * y for x, y in dataset_test.image_patches[:image_idx]
-        )  # Precompute base index
-
-        for idx_patch in range(num_patches_x * num_patches_y):
-            global_idx = base_idx + idx_patch
-            image = dataset_test[global_idx].unsqueeze(0).to(device)
-
-            with torch.inference_mode():
-                prediction = model(image).squeeze(0)
-
-            # Apply sigmoid + threshold only for RegNetY models because it ouputs logits
-            threshold = 0.5
-            if apply_sigmoid:
-                prediction = torch.sigmoid(prediction)
-            pred_binaire = (prediction > threshold).int()
-            dataset_test.insert(pred_binaire)
-
-    logging.info("= To submit")
-    dataset_test.to_submission()
-"""
-
-
-# TODO: merge sub and sub ensemble to a only function
-@amp_autocast
-def sub_ensemble(config):
     """Effectue une prédiction par ensemble de modèles."""
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     use_tta = config.get("use_tta", True)
-
-    # Find Models path
     models_dir_path = config["test"].get("models_dir", "~/logs/")
     models_dir_path = os.path.expanduser(models_dir_path)
     models_name = config["test"].get("models_name", "UNet_0")
     model_weight_name = config["test"].get("model_weight_name", "best_model.pt")
-    model_config = config["test"].get("model_config_name", "config.yaml")
+    model_config_name = config["test"].get("model_config_name", "config.yaml")
 
+    # Find Models Path
     models_dir = [
         os.path.join(models_dir_path, model_name)
         for model_name in models_name
         if os.path.isdir(os.path.join(models_dir_path, model_name))
     ]
 
-    # Load config of each models
-    models_config = []
-    patch_sizes = []
-    for model_dir in models_dir:
-        config_path = os.path.join(model_dir, "config.yaml")
-        logging.debug(f"Loading model: {model_dir} with config: {config_path}")
+    # Load Configs
+    models_config, patch_sizes = utils.load_configs(models_dir, model_config_name)
 
-        with open(config_path) as f:
-            model_config = yaml.safe_load(f)
-        models_config.append(model_config)
-
-        patch_size = model_config["data"]["patch_size"]
-        patch_sizes.append(tuple(patch_size))
-
-    # Check all models have same patch size
-    if len(set(patch_sizes)) == 1:
-        logging.info(f"All models have the same patch size: {patch_sizes[0]}")
-    else:
-        logging.error("Patch sizes are not consistent across models.")
-        raise ValueError("Inconsistent patch sizes across models.")
-
-    # Loas Dataset
+    # Load Dataset
     logging.info("= Dataset")
-    patch_size = patch_sizes[0]
     test_path = config["data"]["testpath"]
-    dataset_test = data.PlanktonDataset(test_path, patch_size, mode="test")
+    dataset_test = data.PlanktonDataset(test_path, patch_sizes[0], mode="test")
     input_size = tuple(dataset_test[0].shape)
     num_classes = input_size[0]
     logging.info(f"  -  Number of samples: {len(dataset_test)}")
 
-    # Find Model weight files
-    models_weight_path = [
-        os.path.join(model_dir, model_weight_name)
-        for model_dir in models_dir
-        if os.path.exists(os.path.join(model_dir, model_weight_name))
-    ]
-    logging.info(f"Found {len(models_weight_path)} models in {models_dir}")
-
-    if not models_weight_path:
-        logging.error("No models found!")
-        raise ValueError("No models fund")
+    # Find Model Weight Files
+    models_weight_path = utils.find_models_weight_path(model_weight_name, models_dir)
 
     # Load Models
     logging.info("= Loading Model(s)")
+    models = utils.load_models(
+        device, use_tta, models_config, input_size, num_classes, models_weight_path
+    )
 
-    if len(models_weight_path) != len(models_config):
-        raise ValueError("Mismatch size between configs and models weight")
-
-    models = []
-    for model_weight_path, model_config in zip(models_weight_path, models_config):
-        model = utils.build_and_load_model(
-            model_config["model"], input_size, num_classes, model_weight_path, device
-        )
-        if use_tta:
-            model = utils.apply_tta(model, use_tta)
-        models.append(model)
-
-    if not models:
-        logging.error("No valid models could be loaded!")
-        raise ValueError("0 Models Loaded")
-    logging.debug(f"Loaded {len(models)} models successfully!")
-
-    # Predict Mask
+    # Predict Masks
     logging.info("= Predict masks")
+    utils.predict_masks(device, dataset_test, models)
 
-    for image_idx, (num_patches_x, num_patches_y) in enumerate(
-        dataset_test.image_patches
-    ):
-        logging.info(f"Predicting patches for image {image_idx}")
-
-        for idx_patch in range(num_patches_x * num_patches_y):
-            if idx_patch % 100 == 0:
-                logging.info(
-                    f"Predict patch {idx_patch} / {num_patches_x * num_patches_y}"
-                )
-
-            global_idx = idx_patch + sum(
-                x * y for x, y in dataset_test.image_patches[:image_idx]
-            )  # Calcul de l'index global
-
-            image = dataset_test[global_idx].unsqueeze(0).to(device)
-
-            # Moyenne des prédictions de tous les modèles
-            with torch.inference_mode():
-                predictions = [torch.sigmoid(model(image)) for model in models]
-            avg_prediction = torch.mean(torch.stack(predictions), dim=0)
-
-            # Appliquer un seuil pour la segmentation binaire
-            binary_prediction = (avg_prediction > 0.5).long()
-            dataset_test.insert(binary_prediction)
-
-    # **Sauvegarde de la soumission**
-    logging.info("= Saving ensemble submission")
+    # Create submission file
+    logging.info("= Creating submission")
     dataset_test.to_submission()
-    logging.info("Ensemble submission saved successfully!")
+    logging.info("Submission saved successfully!")
 
 
 if __name__ == "__main__":
@@ -466,7 +294,7 @@ if __name__ == "__main__":
     parser.add_argument("config", help="Path to config.yaml")
     parser.add_argument(
         "command",
-        choices=["train", "test", "test_proba", "sub", "sub_ensemble"],
+        choices=["train", "test", "test_proba", "sub"],
         help="Command to execute",
     )
 
