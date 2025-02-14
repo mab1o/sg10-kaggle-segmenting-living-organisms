@@ -12,14 +12,14 @@ data:
 optim:
   algo: AdamW
   params:
-    lr: 0.001  # SegFormer aime un LR légèrement plus bas
-    weight_decay: 0.0001
+    lr: 0.0005  # SegFormer aime un LR légèrement plus bas
+    weight_decay: 0.0005
 
 scheduler:
   class: CosineAnnealingLR
   params:
     T_max: 200     # Nombre maximal d'itérations
-    eta_min: 0.00001 # Taux d'apprentissage minimal
+    eta_min: 0.0001 # Taux d'apprentissage minimal
 
 
 nepochs: 200
