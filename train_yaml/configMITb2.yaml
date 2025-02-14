@@ -16,13 +16,13 @@ optim:
     weight_decay: 0.0001
 
 scheduler:
-  class: CosineAnnealingWarmRestarts
+  class: CosineAnnealingLR
   params:
-    T_0: 10  # Restart every 10 epochs
-    T_mult: 2
-    eta_min: 0.000001
+    T_max: 200     # Nombre maximal d'itérations
+    eta_min: 0.00001 # Taux d'apprentissage minimal
 
-nepochs: 100
+
+nepochs: 200
 pos_weight: 1
 
 loss:
