@@ -18,6 +18,18 @@ if torch.cuda.is_available():
 
 
 def train(config):
+    """Train a model based on the provided configuration.
+
+    This function:
+    - Builds the dataloaders for training and validation datasets.
+    - Configures the loss function, optimizer, and learning rate scheduler.
+    - Creates directories to save logs and model weights.
+    - Saves model checkpoints based on performance metrics.
+
+    Arguments:
+    - config: A dictionary containing configuration settings for the model, optimizer, loss function, etc.
+
+    """
     use_cuda = torch.cuda.is_available()
     device = torch.device("cuda") if use_cuda else torch.device("cpu")
 
@@ -83,7 +95,6 @@ def train(config):
         train_loss = utils.train(
             model, train_loader, loss, optimizer, scheduler, device
         )
-
         test_loss, test_f1, test_precision, test_recall = utils.test(
             model, valid_loader, loss, device
         )
@@ -108,134 +119,79 @@ def train(config):
             })
 
 
-# TODO: merge test proba and test
 @amp_autocast
 def test(config):
-    """Visualize and validate results with binary prediction."""
+    """Evaluates the trained model on a test dataset and visualizes the results.
+
+    This function:
+    - Loads the test and training datasets (if required for additional evaluation).
+    - Loads the pre-trained model using the provided weights.
+    - Makes predictions on the test dataset.
+    - Displays comparisons between the predicted masks and the real masks.
+    - Optionally calculates and visualizes probabilities, as well as performs extra evaluations on the training data.
+
+    Arguments:
+    - config: A dictionary containing configuration settings for the model, dataset, and evaluation process.
+
+    """
     device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
-    model_path = os.path.join(
-        config["test"]["model_path"], config["test"]["model_name"]
-    )
+    models_dir_path = config["test"].get("models_dir", "~/logs/")
+    models_dir_path = os.path.expanduser(models_dir_path)
+    models_name = config["test"].get("models_name", ["UNet_0"])
+    model_weight_name = config["test"].get("model_weight_name", "best_model.pt")
+    model_config_name = config["test"].get("model_config_name", "config.yaml")
 
-    model_config = utils.load_model_config(config["test"])
+    model_dir = os.path.join(models_dir_path, models_name[0])
+    model_path = os.path.join(model_dir, model_weight_name)
+    model_config = utils.load_model_config(model_dir, model_config_name)
 
+    # Load datasets
     logging.info("= Dataset")
-    dataset_test = data.PlanktonDataset(
-        config["data"]["testpath"], config["data"]["patch_size"], mode="test"
-    )
-    logging.info(f"  -  Number of test samples: {len(dataset_test)}")
-
+    dataset_test, dataset_train = utils.load_dataset(config, model_config)
     input_size = tuple(dataset_test[0].shape)
     num_classes = input_size[0]
 
+    # Load Model
     logging.info("= Model")
     model = utils.build_and_load_model(
-        model_config, input_size, num_classes, model_path, device
+        model_config["model"], input_size, num_classes, model_path, device
     )
 
-    # Seconde partie de test: Utiliser les prédiction
+    # Predict First Image
     logging.info("= Predict first image")
-    with torch.inference_mode():
-        for idx_img in range(
-            dataset_test.image_patches[0][0] * dataset_test.image_patches[0][1]
-        ):
-            if idx_img % 400 == 0:
-                logging.info(f"  - Predicting mask {idx_img}")
-            image = dataset_test[idx_img].unsqueeze(0).to(device)
-            dataset_test.insert(model.predict(image))
+    utils.predict_and_insert(dataset_test, model, device)
 
-    print(dataset_test.mask_files[0][0])
-
+    # Show image vs maxk predict
     logging.info("= Compare validation image with predicted mask")
     data.show_validation_image_vs_predicted_mask(
-        ds=dataset_test,  # Dataset contenant les masques prédits
-        idx=0,  # Index de l'image à afficher
-        validation_dataset=dataset_test,  # Dataset avec l'image de validation
+        ds=dataset_test,
+        idx=0,
+        validation_dataset=dataset_test,
         image_name="validation_vs_predicted_1.png",
     )
 
-    # ---- Extra Evaluation Functions (using dataset_train) ----
+    # Show probabilities and compare to real masks
+    if dataset_train is not None:
+        utils.calc_and_show_proba(config, device, model_config, dataset_train, model)
+
+    # Extra Evaluation Functions (using training data)
     if config["test"].get("use_train", False):
-        logging.info("= Extra evaluation using training data")
-        dataset_train = data.PlanktonDataset(
-            config["data"]["trainpath"], config["data"]["patch_size"]
-        )
-        logging.info(f"  - Number of train samples: {len(dataset_train)}")
-        # For example, reconstruct image from training data or compare predicted mask vs real mask:
-        logging.info("= Reconstruct image from training data")
-        data.show_image_mask_from(dataset_train, 0, "image_reconstruct_1.png")
-        logging.info("= Compare predicted mask to real mask")
-        data.show_mask_predict_compare_to_real(
-            dataset_test, 0, dataset_train, "compare_mask_1.png"
-        )
-    # ---------------------------------------------------------
-
-
-# TODO: merge test proba and test
-@amp_autocast
-def test_proba(config):
-    """Visualize and validate results with binary prediction."""
-    device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
-    model_path = os.path.join(
-        config["test"]["model_path"], config["test"]["model_name"]
-    )
-
-    model_config = utils.load_model_config(config["test"])
-
-    logging.info("= Dataset")
-    dataset_test = data.PlanktonDataset(
-        config["data"]["testpath"], config["data"]["patch_size"], mode="test"
-    )
-    logging.info(f"  -  Number of test samples: {len(dataset_test)}")
-    dataset_train = data.PlanktonDataset(
-        config["data"]["trainpath"], config["data"]["patch_size"]
-    )
-    logging.info(f"  -  Number of train samples: {len(dataset_train)}")
-
-    input_size = tuple(dataset_test[0].shape)
-    num_classes = input_size[0]
-
-    logging.info("= Model")
-    model = utils.build_and_load_model(
-        model_config, input_size, num_classes, model_path, device
-    )
-
-    # Seconde partie de test_with_proba: mask de proba prédit vs le mask binaire réel
-    # or seul dataset_train à des masks binaire réels.
-    logging.info("= Predict probabilities and compare to real masks")
-    dataset_train_proba = data.PlanktonDataset(  # Copie dédiée aux probabilités
-        config["data"]["trainpath"],
-        config["data"]["patch_size"],
-        mode="test",  # autorise dataset_train_proba.insert(...)
-    )
-    with torch.inference_mode():
-        for idx_img in range(
-            dataset_train.image_patches[0][0] * dataset_train.image_patches[0][1]
-        ):
-            if idx_img % 400 == 0:
-                logging.info(f"  - Predicting probabilities for mask {idx_img}")
-            image = dataset_train[idx_img][0].unsqueeze(0).to(device)
-
-            if "segmentation_models_pytorch" in type(model).__module__:
-                # Cas segmentation_models_pytorch
-                logits = model(image)
-                probs = torch.sigmoid(logits).half()
-            else:
-                probs = model.predict_probs(image).half()
-
-            dataset_train_proba.insert(probs)
-
-    # Visualiser le mask de proba prédit vs le mask binaire réel
-    # et calcule le meilleur seuil pour obtenir le plus grand F1-score
-    logging.info("= Show probabilities and compare to real masks")
-    data.show_predicted_mask_proba_vs_real_mask_binary(
-        dataset_train_proba, 0, dataset_train, "proba_compared_real_1.png"
-    )
+        utils.more_eval(dataset_test, dataset_train)
 
 
 @amp_autocast
 def sub(config):
-    """Effectue une prédiction par ensemble de modèles."""
+    """Perform model inference for a set of models and generates a submission file.
+
+    This function:
+    - Loads multiple models and their respective weights.
+    - Makes predictions for each model on the test dataset.
+    - Combines the results and generates a submission file.
+
+    Arguments:
+    - config: A dictionary containing configuration settings for the models, dataset, and submission process.
+
+    """
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     use_tta = config.get("use_tta", True)
     models_dir_path = config["test"].get("models_dir", "~/logs/")
@@ -286,15 +242,15 @@ if __name__ == "__main__":
 
     # check in advance if cuda is available
     if torch.cuda.is_available():
-        print(f"CUDA is available! Device name: {torch.cuda.get_device_name(0)}")
+        logging.info(f"CUDA is available! Device name: {torch.cuda.get_device_name(0)}")
     else:
-        print("CUDA is NOT available.")
+        logging.error("CUDA is NOT available.")
 
     parser = argparse.ArgumentParser()
     parser.add_argument("config", help="Path to config.yaml")
     parser.add_argument(
         "command",
-        choices=["train", "test", "test_proba", "sub"],
+        choices=["train", "test", "sub"],
         help="Command to execute",
     )
 
