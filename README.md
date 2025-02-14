@@ -19,29 +19,26 @@ python -m pip install .
 2. Run a training : ([config file example](docs/config_train_example.yml))
 
 ```bash
-python -m torchtmpl.main train_yaml/{yaml_name}.yaml train
+python -m torchtmpl.main train_yaml.yaml train
 ```
 
-3. Create the submission.csv ([config file example](docs/config_inference_example.yml))
-```bash
-python -m torchtmpl.main inference.yaml sub
-```
-
-4. Submit the submission.csv file:
-
-```bash
-kaggle competitions submit -c 3md4040-2025-challenge -f submission.csv -m "Message"
-```
-
-5. Visualize the data and gain insights
+3. Visualize the data and gain insights: ([config file example](docs/config_inference_example.yml))
 
 ```bash
 python -m torchtmpl.main inference.yaml test
 ```
+
+4. Create the submission.csv ([config file example](docs/config_inference_example.yml))
+
 ```bash
-python -m torchtmpl.main inference.yaml test_proba
+python -m torchtmpl.main inference.yaml sub
 ```
 
+5. Submit the submission.csv file:
+
+```bash
+kaggle competitions submit -c 3md4040-2025-challenge -f submission.csv -m "Message"
+```
 
 ### Cluster experimentation
 
@@ -49,50 +46,14 @@ For running the code on a cluster, we provide an example script for starting an 
 The script we provide is dedicated to a use on our clusters and you may need to adapt it to your setting. 
 Then running the simulation can be as simple as :
 
-1. Connect to the frontal with SSH [Guide](https://dce.pages.centralesupelec.fr/03_connection/#using-visual-studio-code)  
-2. Commit your changes  
+1. Connect to the frontal with SSH [Guide](https://dce.pages.centralesupelec.fr/03_connection/#using-visual-studio-code) 
+
+2. Commit your changes 
+
 3. Submit the job:
+
 ```bash
-python3 submit-slurm.py train_yaml/{yaml_name}.yaml
-```
-
-
-### Using the Ensemble Method
-
-#### **1. Ensure you have trained multiple models**
-Each trained model should be stored inside the `ensemble_models/` directory with the following structure:
-
-ensemble_models/
-│── Model_1/
-│   ├── best_model.pt
-│   ├── config.yaml
-│
-│── Model_2/
-│   ├── best_model.pt
-│   ├── config.yaml
-│
-│── Model_3/
-│   ├── best_model.pt
-│   ├── config.yaml
-
-#### **2. Run ensemble inference**
-```bash
-python3 -m torchtmpl.main inference.yaml sub_ensemble
-```
-
-#### **3. Submit the submission.csv file:**
-```bash
-kaggle competitions submit -c 3md4040-2025-challenge -f submission.csv -m "Message"
-```
-
-### Using the Test-Time Augmentation
-
-You can use TTA by adding --tta to the end of the sub and sub_ensemble call.
-```bash
-python -m torchtmpl.main inference.yaml sub --tta
-```
-```bash
-python3 -m torchtmpl.main inference.yaml sub_ensemble --tta
+python3 submit-slurm.py train_yaml.yaml
 ```
 
 ## Project Structure
@@ -111,8 +72,8 @@ python3 -m torchtmpl.main inference.yaml sub_ensemble --tta
     ├── __init__.py
     ├── main.py
     ├── models       # model management
-    ├── optim.py
-    └── utils.py
+    ├── optim
+    └── utils
 ```
 
 ### Projet Choices
