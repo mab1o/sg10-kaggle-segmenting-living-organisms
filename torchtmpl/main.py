@@ -150,7 +150,6 @@ def train(config):
 
 
 # TODO: merge test proba and test
-# TODO : check usage of amp_autocast
 @amp_autocast
 def test(config):
     """Visualize and validate results with binary prediction."""
@@ -276,13 +275,15 @@ def test_proba(config):
 
 
 # TODO: merge sub and sub ensemble to a only function
+"""
 @amp_autocast
 def sub(config):
     device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
     use_tta = config.get("use_tta", True)
-    model_path = os.path.join(
-        config["test"]["model_path"], config["test"]["model_name"]
-    )
+    models_path = [
+        os.path.join(model, config["test"]["model_name"])
+        for model in config["test"]["model_path"]
+    ]
 
     model_config = utils.load_model_config(config["test"])
 
@@ -295,15 +296,17 @@ def sub(config):
     num_classes = input_size[0]
 
     logging.info("= Model")
-    model = utils.build_and_load_model(
-        model_config, input_size, num_classes, model_path, device
-    )
+    models = [
+        utils.build_and_load_model(
+            model_config, input_size, num_classes, model_path, device
+        )
+        for model_path in models_path
+    ]
 
     apply_sigmoid = model_config["encoder"]["model_name"] == "timm-regnety_032"
 
-    # Activation de TTA uniquement si use_tta est True
     if use_tta:
-        model = utils.apply_tta(model, use_tta)
+        models = [utils.apply_tta(model, use_tta) for model in models]
 
     logging.info("= Predict masks for all test images")
     for image_idx, (num_patches_x, num_patches_y) in enumerate(
@@ -330,6 +333,7 @@ def sub(config):
 
     logging.info("= To submit")
     dataset_test.to_submission()
+"""
 
 
 # TODO: merge sub and sub ensemble to a only function
@@ -339,66 +343,83 @@ def sub_ensemble(config):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     use_tta = config.get("use_tta", True)
 
+    # Find Models path
+    models_dir_path = config["test"].get("models_dir", "~/logs/")
+    models_dir_path = os.path.expanduser(models_dir_path)
+    models_name = config["test"].get("models_name", "UNet_0")
+    model_weight_name = config["test"].get("model_weight_name", "best_model.pt")
+    model_config = config["test"].get("model_config_name", "config.yaml")
+
+    models_dir = [
+        os.path.join(models_dir_path, model_name)
+        for model_name in models_name
+        if os.path.isdir(os.path.join(models_dir_path, model_name))
+    ]
+
+    # Load config of each models
+    models_config = []
+    patch_sizes = []
+    for model_dir in models_dir:
+        config_path = os.path.join(model_dir, "config.yaml")
+        logging.debug(f"Loading model: {model_dir} with config: {config_path}")
+
+        with open(config_path) as f:
+            model_config = yaml.safe_load(f)
+        models_config.append(model_config)
+
+        patch_size = model_config["data"]["patch_size"]
+        patch_sizes.append(tuple(patch_size))
+
+    # Check all models have same patch size
+    if len(set(patch_sizes)) == 1:
+        logging.info(f"All models have the same patch size: {patch_sizes[0]}")
+    else:
+        logging.error("Patch sizes are not consistent across models.")
+        raise ValueError("Inconsistent patch sizes across models.")
+
+    # Loas Dataset
     logging.info("= Dataset")
-    dataset_test = data.PlanktonDataset(
-        config["data"]["testpath"], config["data"]["patch_size"], mode="test"
-    )
+    patch_size = patch_sizes[0]
+    test_path = config["data"]["testpath"]
+    dataset_test = data.PlanktonDataset(test_path, patch_size, mode="test")
     input_size = tuple(dataset_test[0].shape)
     num_classes = input_size[0]
     logging.info(f"  -  Number of samples: {len(dataset_test)}")
 
-    # **Trouver tous les modèles dans `ensemble_models/`**
-    ensemble_dir = "ensemble_models/"
-    model_dirs = [
-        os.path.join(ensemble_dir, d)
-        for d in os.listdir(ensemble_dir)
-        if os.path.isdir(os.path.join(ensemble_dir, d))
+    # Find Model weight files
+    models_weight_path = [
+        os.path.join(model_dir, model_weight_name)
+        for model_dir in models_dir
+        if os.path.exists(os.path.join(model_dir, model_weight_name))
     ]
-    model_paths = [
-        os.path.join(d, "best_model.pt")
-        for d in model_dirs
-        if os.path.exists(os.path.join(d, "best_model.pt"))
-    ]
+    logging.info(f"Found {len(models_weight_path)} models in {models_dir}")
 
-    logging.info(f"Found {len(model_paths)} models in {ensemble_dir}: {model_paths}")
+    if not models_weight_path:
+        logging.error("No models found!")
+        raise ValueError("No models fund")
 
-    if not model_paths:
-        logging.error(
-            "No models found for ensembling! Check your ensemble_models/ directory."
-        )
-        return
+    # Load Models
+    logging.info("= Loading Model(s)")
 
-    # **Chargement des modèles**
-    logging.info("= Loading Models")
-    models_list = []
+    if len(models_weight_path) != len(models_config):
+        raise ValueError("Mismatch size between configs and models weight")
 
-    for model_path in model_paths:
-        config_path = os.path.join(os.path.dirname(model_path), "config.yaml")
-        logging.info(f"Loading model: {model_path} with config: {config_path}")
-
-        # Charger la configuration du modèle
-        with open(config_path) as f:
-            model_data = yaml.safe_load(f)
-        model_config = model_data["model"]
-
-        # Construire et charger le modèle
+    models = []
+    for model_weight_path, model_config in zip(models_weight_path, models_config):
         model = utils.build_and_load_model(
-            model_config, input_size, num_classes, model_path, device
+            model_config["model"], input_size, num_classes, model_weight_path, device
         )
-
         if use_tta:
             model = utils.apply_tta(model, use_tta)
+        models.append(model)
 
-        models_list.append(model)
+    if not models:
+        logging.error("No valid models could be loaded!")
+        raise ValueError("0 Models Loaded")
+    logging.debug(f"Loaded {len(models)} models successfully!")
 
-    if not models_list:
-        logging.error("No valid models could be loaded! Aborting ensemble prediction.")
-        return
-
-    logging.info(f"Loaded {len(models_list)} models successfully!")
-
-    # **Prédictions pour toutes les images**
-    logging.info("= Predict masks for all test images using ensemble")
+    # Predict Mask
+    logging.info("= Predict masks")
 
     for image_idx, (num_patches_x, num_patches_y) in enumerate(
         dataset_test.image_patches
@@ -406,6 +427,11 @@ def sub_ensemble(config):
         logging.info(f"Predicting patches for image {image_idx}")
 
         for idx_patch in range(num_patches_x * num_patches_y):
+            if idx_patch % 100 == 0:
+                logging.info(
+                    f"Predict patch {idx_patch} / {num_patches_x * num_patches_y}"
+                )
+
             global_idx = idx_patch + sum(
                 x * y for x, y in dataset_test.image_patches[:image_idx]
             )  # Calcul de l'index global
@@ -413,7 +439,8 @@ def sub_ensemble(config):
             image = dataset_test[global_idx].unsqueeze(0).to(device)
 
             # Moyenne des prédictions de tous les modèles
-            predictions = [torch.sigmoid(model(image)) for model in models_list]
+            with torch.inference_mode():
+                predictions = [torch.sigmoid(model(image)) for model in models]
             avg_prediction = torch.mean(torch.stack(predictions), dim=0)
 
             # Appliquer un seuil pour la segmentation binaire
