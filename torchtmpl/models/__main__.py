@@ -17,7 +17,7 @@ def test_linear():
 
     input_tensor = torch.randn(batch_size, *input_size)
     output = model(input_tensor)
-    print(f"Output tensor of size : {output.shape}")
+    logging.info(f"Output tensor of size : {output.shape}")
 
 
 def test_cnn():
@@ -29,7 +29,7 @@ def test_cnn():
 
     input_tensor = torch.randn(batch_size, *input_size)
     output = model(input_tensor)
-    print(f"Output tensor of size : {output.shape}")
+    logging.info(f"Output tensor of size : {output.shape}")
 
 
 def test_unet():
@@ -47,8 +47,8 @@ def test_unet():
 
     model.eval()
     y = model(x)
-    print(f"Output shape : {y.shape}")
-    print(y[0, :, 1, :].shape)
+    logging.info(f"Output shape : {y.shape}")
+    logging.info(y[0, :, 1, :].shape)
     assert y.shape == (1, num_classes, input_size[1], input_size[2])
 
 
@@ -79,9 +79,9 @@ def test_efficientnet_b3_segmentation():
     with torch.no_grad():
         y = model(x)
 
-    # Print output shape
-    print(f"Input shape: {x.shape}")
-    print(f"Output shape: {y.shape}")
+    # logging.info output shape
+    logging.info(f"Input shape: {x.shape}")
+    logging.info(f"Output shape: {y.shape}")
 
     # Assert that the output shape matches the expected size
     assert y.shape == (batch_size, num_classes, input_size[1], input_size[2]), (

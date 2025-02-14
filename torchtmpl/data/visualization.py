@@ -262,7 +262,7 @@ def show_validation_image_vs_predicted_mask(
     """
     # 1) Load the validation image
     val_image_name = validation_dataset.image_files[idx]
-    print(f"Selected image = {val_image_name}")
+    logging.info(f"Selected image = {val_image_name}")
 
     val_image_path = os.path.join(
         validation_dataset.image_mask_dir, validation_dataset.image_files[idx]

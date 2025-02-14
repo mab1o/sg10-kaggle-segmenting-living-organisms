@@ -1,20 +1,31 @@
 import datetime
 import functools
-import logging
 import os
+import logging
+import pathlib
+import sys
 
+# External imports
 import segmentation_models_pytorch as smp
 import torch
 import torch.nn
 import tqdm
-import yaml
 from torch.amp import GradScaler, autocast
-
-from . import models
+import torchinfo.torchinfo as torchinfo
+import wandb
+import yaml
 
 
 def amp_autocast(func):
-    """Décorateur pour exécuter une fonction avec autocast AMP."""
+    """Enable automatic mixed precision (AMP) for the wrapped function (decorator).
+
+    Args:
+        func (function): The function to wrap.
+
+    Returns:
+        wrapper (function): The wrapped function with AMP enabled.
+
+    """
 
     @functools.wraps(func)
     def wrapper(*args, **kwargs):
@@ -25,7 +36,16 @@ def amp_autocast(func):
 
 
 def generate_unique_logpath(logdir, raw_run_name):
-    """Generate a unique directory name ensuring logs are saved in the home directory."""
+    """Generate a unique log path for saving model logs.
+
+    Args:
+        logdir (str): The relative path for logs from the user's home directory.
+        raw_run_name (str): The base name for the run (typically the experiment name).
+
+    Returns:
+        log_path (str): A unique path to store the logs.
+
+    """
     # Ensure logdir is stored in HOME while keeping it relative in YAML
     home_logdir = os.path.join(
         os.path.expanduser("~"), logdir
@@ -45,7 +65,15 @@ def generate_unique_logpath(logdir, raw_run_name):
 
 
 class ModelCheckpoint:
-    """Early stopping callback."""
+    """Callback class to save the model whenever a better score is achieved.
+
+    Args:
+        model (torch.nn.Module): The model to monitor.
+        savepath (str): The file path to save the model.
+        min_is_best (bool): If True, the model with the lowest score is considered the best.
+                            If False, the model with the highest score is considered the best.
+
+    """
 
     def __init__(
         self,
@@ -83,19 +111,21 @@ class ModelCheckpoint:
         return False
 
 
-def train(model, loader, f_loss, optimizer, device, dynamic_display=True):
-    """Train a model for one epoch, iterating over the loader.
+def train(model, loader, f_loss, optimizer, scheduler, device, dynamic_display=True):
+    """Train the model for one epoch using the provided data loader.
 
-    This function iterates over the loader, computes the loss with f_loss, and updates the model parameters with the optimizer.
+    Args:
+        model (torch.nn.Module): The model to train.
+        loader (DataLoader): The data loader to provide training data.
+        f_loss (function): The loss function to compute the loss.
+        optimizer (Optimizer): The optimizer to update the model's parameters.
+        scheduler (Scheduler): The scheduler to adjust the learning rate.
+        device (torch.device): The device (CPU or GPU) for model training.
+        dynamic_display (bool): Whether to display a dynamic progress bar (default: True).
 
-    Arguments :
-    model     -- A torch.nn.Module object
-    loader    -- A torch.utils.data.DataLoader
-    f_loss    -- The loss function, i.e. a loss Module
-    optimizer -- A torch.optim.Optimzer object
-    device    -- A torch.device
-    Returns :
-    The averaged train metrics computed over a sliding window
+    Returns:
+        avg_loss (float): The average loss over the entire training epoch.
+
     """
     # We enter train mode.
     # This is important for layers such as dropout, batchnorm, ...
@@ -125,37 +155,32 @@ def train(model, loader, f_loss, optimizer, device, dynamic_display=True):
         scaler.step(optimizer)
         scaler.update()
 
-        # Vidage de mémoire et diagnostic (à espacer pour éviter des ralentissements)
-        # if i % 300 == 0 and device == torch.device("cuda"):
-        #   print("Avant vidage du cache:")
-        #   print(torch.cuda.memory_summary())
-        #   torch.cuda.empty_cache()
-        #   print("Après vidage du cache:")
-        #  print(torch.cuda.memory_summary())
-
         # Update the metrics
         # We here consider the loss is batch normalized
         total_loss += inputs.shape[0] * loss.item()
         num_samples += inputs.shape[0]
         pbar.set_description(f"Train loss : {total_loss / num_samples:.4f}")
+
+    # Scheduler update
+    scheduler.step()
     return total_loss / num_samples
 
 
 @amp_autocast
 def test(model, loader, f_loss, device):
-    """Test a model over the loader using SMP metrics.
+    """Test the model over the loader using specified metrics (loss, precision, recall, F1-score).
 
     Args:
-        model     -- A torch.nn.Module object
-        loader    -- A torch.utils.data.DataLoader
-        f_loss    -- The loss function, i.e. a loss Module
-        device    -- A torch.device
+        model (torch.nn.Module): The model to test.
+        loader (DataLoader): The data loader for the test data.
+        f_loss (function): The loss function used for evaluation.
+        device (torch.device): The device (CPU or GPU) for evaluation.
 
     Returns:
-        avg_loss      -- The average loss over the dataset
-        avg_f1        -- The F1-score computed over the dataset
-        avg_precision -- The precision computed over the dataset
-        avg_recall    -- The recall computed over the dataset
+        avg_loss (float): The average loss over the entire test set.
+        avg_f1 (float): The average F1-score over the entire test set.
+        avg_precision (float): The average precision over the entire test set.
+        avg_recall (float): The average recall over the entire test set.
 
     """
     model.eval()
@@ -201,37 +226,63 @@ def test(model, loader, f_loss, device):
     return avg_loss, avg_f1, avg_precision, avg_recall
 
 
-def load_model_config(test_config):
-    model_config_path = os.path.join(
-        test_config["model_path"], test_config["model_config"]
+def create_doc_save_model(
+    config, wandb_log, train_loader, valid_loader, model_config, model, loss
+):
+    """Create and saves a summary document for the training experiment and logs it to the specified location.
+
+    Args:
+        config (dict): The configuration dictionary.
+        wandb_log (object): If not None, logs to Weights & Biases.
+        train_loader (DataLoader): The training data loader.
+        valid_loader (DataLoader): The validation data loader.
+        model_config (dict): The configuration dictionary for the model.
+        model (torch.nn.Module): The trained model.
+        loss (str): A string description of the loss function used.
+
+    Returns:
+        logdir (Path): The directory where the logs and model summary are saved.
+
+    """
+    # Build the logging directory
+    logdir = pathlib.Path(
+        generate_unique_logpath(config["logging"]["logdir"], model_config["class"])
     )
-    logging.info(f"Loading model configuration from: {model_config_path}")
-    with open(model_config_path) as f:
-        return yaml.safe_load(f)["model"]
+    logdir.mkdir(parents=True, exist_ok=True)
+    logging.info(f"Will be logging into {logdir}")
 
+    # Sauvegarde locale du fichier config.yaml
+    config_path = logdir / "config.yaml"
+    with open(config_path, "w") as file:
+        yaml.dump(config, file)
 
-def build_and_load_model(model_config, input_size, num_classes, model_path, device):
-    model = models.build_model(model_config, input_size, num_classes)
-    model.to(device)
-    model.load_state_dict(
-        torch.load(model_path, map_location=device, weights_only=True)
+    # Ajout du config.yaml en tant qu'Artifact dans WandB (uniquement si wandb est activé)
+    if wandb_log is not None:
+        artifact = wandb.Artifact("config", type="config")
+        artifact.add_file(str(config_path))
+        wandb.log_artifact(artifact)
+
+    # Make a summary script of the experiment
+    logging.info("= Summary")
+    summary_text = (
+        f"Logdir : {logdir}\n"
+        + "## Command \n"
+        + " ".join(sys.argv)
+        + "\n\n"
+        + f" Config : {config} \n\n"
+        + (f" Wandb run name : {wandb.run.name}\n\n" if wandb_log else "")
+        + "## Summary of the model architecture\n"
+        + f"{torchinfo.summary(model, input_size=next(iter(train_loader))[0].shape)}\n\n"
+        + "## Loss\n\n"
+        + f"{loss}\n\n"
+        + "## Datasets : \n"
+        + f"Train : {train_loader.dataset.dataset}\n"
+        + f"Validation : {valid_loader.dataset.dataset}"
     )
-    model.eval()
-    return model
 
-
-def apply_tta(model, use_tta):
-    """Wrap the model with TTA if use_tta is True."""
-    import ttach as tta
-
-    if use_tta:
-        logging.info("Test-Time Augmentation (TTA) ACTIVÉ")
-        tta_transforms = tta.Compose([
-            tta.HorizontalFlip(),
-            tta.VerticalFlip(),
-            tta.Rotate90(angles=[0, 90, 180, 270]),
-        ])
-        return tta.SegmentationTTAWrapper(model, tta_transforms)
-    else:
-        logging.info("Test-Time Augmentation (TTA) DÉSACTIVÉ")
-        return model
+    # Écriture du résumé de l'expérience
+    with open(logdir / "summary.txt", "w") as f:
+        f.write(summary_text)
+    if wandb_log is not None:
+        wandb.log({"summary": summary_text})
+    return logdir

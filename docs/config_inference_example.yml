@@ -1,16 +1,15 @@
-# Ensemble Learning Configuration
 data:
   root_dir: '/mounts/Datasets3/2024-2025-ChallengePlankton/'
   trainpath: '/mounts/Datasets3/2024-2025-ChallengePlankton/train/'
   testpath: '/mounts/Datasets3/2024-2025-ChallengePlankton/test/'
-  patch_size: [256, 256]
-  batch_size: 32
-  num_workers: 8
 
 test:
-  model_path: 'ensemble_models/B4_conservative_0.8951/'
-  model_name: 'best_model.pt'
-  model_config: 'config.yaml'
-  use_train: false # Set to true to add extra visualization in test and test_proba
-  ensemble_model_dir: "ensemble_models/"  # Charge tous les modèles de ce dossier
-  threshold: 0.5  # Seuil de binarisation des prédictions moyennes
+  models_dir: '~/logs/'
+  models_name:
+    - FPN_0_20250213-120457
+    - Linknet_0_20250213-120839
+  model_weight_name: 'best_model.pt'
+  model_config_name: 'config.yaml'
+  use_train: false
+  threshold: 0.5
+  use_tta : False

@@ -2,17 +2,15 @@
 import argparse
 import logging
 import os
-import pathlib
 import sys
 
 # External imports
 import torch
-import torchinfo.torchinfo as torchinfo
 import wandb
 import yaml
 
 # Local imports
-from . import data, models, utils, optim
+from . import data, models, optim, utils
 from .utils import amp_autocast
 
 if torch.cuda.is_available():
@@ -20,6 +18,18 @@ if torch.cuda.is_available():
 
 
 def train(config):
+    """Train a model based on the provided configuration.
+
+    This function:
+    - Builds the dataloaders for training and validation datasets.
+    - Configures the loss function, optimizer, and learning rate scheduler.
+    - Creates directories to save logs and model weights.
+    - Saves model checkpoints based on performance metrics.
+
+    Arguments:
+    - config: A dictionary containing configuration settings for the model, optimizer, loss function, etc.
+
+    """
     use_cuda = torch.cuda.is_available()
     device = torch.device("cuda") if use_cuda else torch.device("cpu")
 
@@ -69,59 +79,10 @@ def train(config):
     logging.info("= Scheduler")
     scheduler = optim.get_scheduler(optimizer, config["scheduler"])
 
-    # Build the logging directory
-    logdir = pathlib.Path(
-        utils.generate_unique_logpath(
-            config["logging"]["logdir"], model_config["class"]
-        )
+    # Create dir to save all informations and the weight of the model
+    logdir = utils.create_doc_save_model(
+        config, wandb_log, train_loader, valid_loader, model_config, model, loss
     )
-    logdir.mkdir(parents=True, exist_ok=True)
-    logging.info(f"Will be logging into {logdir}")
-
-    # Sauvegarde locale du fichier config.yaml
-    config_path = logdir / "config.yaml"
-    with open(config_path, "w") as file:
-        yaml.dump(config, file)
-
-    # Ajout du config.yaml en tant qu'Artifact dans WandB (uniquement si wandb est activé)
-    if wandb_log is not None:
-        artifact = wandb.Artifact("config", type="config")
-        artifact.add_file(str(config_path))
-        wandb.log_artifact(artifact)
-
-    # TODO: change this ligne to its right file
-    chosen_transforms = data.get_transforms(
-        config["data"].get("transform_type", "light")
-    )
-    logging.info(
-        f"Niveau de transformation: {(config['data'].get('transform_type', 'light'))}"
-    )
-    # Afficher dans le terminal avec logging
-    logging.info(f"Transformations appliquées : {chosen_transforms}")
-
-    # Make a summary script of the experiment
-    logging.info("= Summary")
-    summary_text = (
-        f"Logdir : {logdir}\n"
-        + "## Command \n"
-        + " ".join(sys.argv)
-        + "\n\n"
-        + f" Config : {config} \n\n"
-        + (f" Wandb run name : {wandb.run.name}\n\n" if wandb_log else "")
-        + "## Summary of the model architecture\n"
-        + f"{torchinfo.summary(model, input_size=next(iter(train_loader))[0].shape)}\n\n"
-        + "## Loss\n\n"
-        + f"{loss}\n\n"
-        + "## Datasets : \n"
-        + f"Train : {train_loader.dataset.dataset}\n"
-        + f"Validation : {valid_loader.dataset.dataset}"
-    )
-
-    # Écriture du résumé de l'expérience
-    with open(logdir / "summary.txt", "w") as f:
-        f.write(summary_text)
-    if wandb_log is not None:
-        wandb.log({"summary": summary_text})
 
     # Initialisation du checkpointing
     model_checkpoint = utils.ModelCheckpoint(
@@ -131,13 +92,12 @@ def train(config):
     logging.info("= Start training")
     for e in range(config["nepochs"]):
         # Train 1 epoch
-        train_loss = utils.train(model, train_loader, loss, optimizer, device)
-
+        train_loss = utils.train(
+            model, train_loader, loss, optimizer, scheduler, device
+        )
         test_loss, test_f1, test_precision, test_recall = utils.test(
             model, valid_loader, loss, device
         )
-
-        scheduler.step()  # fonctionnement du scheduler.
 
         # Mise à jour du checkpoint si meilleur F1-score
         updated = model_checkpoint.update(test_f1)
@@ -159,279 +119,122 @@ def train(config):
             })
 
 
-# TODO: merge test proba and test
-# TODO : check usage of amp_autocast
 @amp_autocast
 def test(config):
-    """Visualize and validate results with binary prediction."""
+    """Evaluates the trained model on a test dataset and visualizes the results.
+
+    This function:
+    - Loads the test and training datasets (if required for additional evaluation).
+    - Loads the pre-trained model using the provided weights.
+    - Makes predictions on the test dataset.
+    - Displays comparisons between the predicted masks and the real masks.
+    - Optionally calculates and visualizes probabilities, as well as performs extra evaluations on the training data.
+
+    Arguments:
+    - config: A dictionary containing configuration settings for the model, dataset, and evaluation process.
+
+    """
     device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
-    model_path = os.path.join(
-        config["test"]["model_path"], config["test"]["model_name"]
-    )
+    models_dir_path = config["test"].get("models_dir", "~/logs/")
+    models_dir_path = os.path.expanduser(models_dir_path)
+    models_name = config["test"].get("models_name", ["UNet_0"])
+    model_weight_name = config["test"].get("model_weight_name", "best_model.pt")
+    model_config_name = config["test"].get("model_config_name", "config.yaml")
 
-    model_config = utils.load_model_config(config["test"])
+    model_dir = os.path.join(models_dir_path, models_name[0])
+    model_path = os.path.join(model_dir, model_weight_name)
+    model_config = utils.load_model_config(model_dir, model_config_name)
 
+    # Load datasets
     logging.info("= Dataset")
-    dataset_test = data.PlanktonDataset(
-        config["data"]["testpath"], config["data"]["patch_size"], mode="test"
-    )
-    logging.info(f"  -  Number of test samples: {len(dataset_test)}")
-
+    dataset_test, dataset_train = utils.load_dataset(config, model_config)
     input_size = tuple(dataset_test[0].shape)
     num_classes = input_size[0]
 
+    # Load Model
     logging.info("= Model")
     model = utils.build_and_load_model(
-        model_config, input_size, num_classes, model_path, device
+        model_config["model"], input_size, num_classes, model_path, device
     )
 
-    # Seconde partie de test: Utiliser les prédiction
+    # Predict First Image
     logging.info("= Predict first image")
-    with torch.inference_mode():
-        for idx_img in range(
-            dataset_test.image_patches[0][0] * dataset_test.image_patches[0][1]
-        ):
-            if idx_img % 400 == 0:
-                logging.info(f"  - Predicting mask {idx_img}")
-            image = dataset_test[idx_img].unsqueeze(0).to(device)
-            dataset_test.insert(model.predict(image))
+    utils.predict_and_insert(dataset_test, model, device)
 
-    print(dataset_test.mask_files[0][0])
-
+    # Show image vs maxk predict
     logging.info("= Compare validation image with predicted mask")
     data.show_validation_image_vs_predicted_mask(
-        ds=dataset_test,  # Dataset contenant les masques prédits
-        idx=0,  # Index de l'image à afficher
-        validation_dataset=dataset_test,  # Dataset avec l'image de validation
+        ds=dataset_test,
+        idx=0,
+        validation_dataset=dataset_test,
         image_name="validation_vs_predicted_1.png",
     )
 
-    # ---- Extra Evaluation Functions (using dataset_train) ----
+    # Show probabilities and compare to real masks
+    if dataset_train is not None:
+        utils.calc_and_show_proba(config, device, model_config, dataset_train, model)
+
+    # Extra Evaluation Functions (using training data)
     if config["test"].get("use_train", False):
-        logging.info("= Extra evaluation using training data")
-        dataset_train = data.PlanktonDataset(
-            config["data"]["trainpath"], config["data"]["patch_size"]
-        )
-        logging.info(f"  - Number of train samples: {len(dataset_train)}")
-        # For example, reconstruct image from training data or compare predicted mask vs real mask:
-        logging.info("= Reconstruct image from training data")
-        data.show_image_mask_from(dataset_train, 0, "image_reconstruct_1.png")
-        logging.info("= Compare predicted mask to real mask")
-        data.show_mask_predict_compare_to_real(
-            dataset_test, 0, dataset_train, "compare_mask_1.png"
-        )
-    # ---------------------------------------------------------
+        utils.more_eval(dataset_test, dataset_train)
 
 
-# TODO: merge test proba and test
 @amp_autocast
-def test_proba(config):
-    """Visualize and validate results with binary prediction."""
-    device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
-    model_path = os.path.join(
-        config["test"]["model_path"], config["test"]["model_name"]
-    )
+def sub(config):
+    """Perform model inference for a set of models and generates a submission file.
 
-    model_config = utils.load_model_config(config["test"])
+    This function:
+    - Loads multiple models and their respective weights.
+    - Makes predictions for each model on the test dataset.
+    - Combines the results and generates a submission file.
 
-    logging.info("= Dataset")
-    dataset_test = data.PlanktonDataset(
-        config["data"]["testpath"], config["data"]["patch_size"], mode="test"
-    )
-    logging.info(f"  -  Number of test samples: {len(dataset_test)}")
-    dataset_train = data.PlanktonDataset(
-        config["data"]["trainpath"], config["data"]["patch_size"]
-    )
-    logging.info(f"  -  Number of train samples: {len(dataset_train)}")
+    Arguments:
+    - config: A dictionary containing configuration settings for the models, dataset, and submission process.
 
-    input_size = tuple(dataset_test[0].shape)
-    num_classes = input_size[0]
-
-    logging.info("= Model")
-    model = utils.build_and_load_model(
-        model_config, input_size, num_classes, model_path, device
-    )
-
-    # Seconde partie de test_with_proba: mask de proba prédit vs le mask binaire réel
-    # or seul dataset_train à des masks binaire réels.
-    logging.info("= Predict probabilities and compare to real masks")
-    dataset_train_proba = data.PlanktonDataset(  # Copie dédiée aux probabilités
-        config["data"]["trainpath"],
-        config["data"]["patch_size"],
-        mode="test",  # autorise dataset_train_proba.insert(...)
-    )
-    with torch.inference_mode():
-        for idx_img in range(
-            dataset_train.image_patches[0][0] * dataset_train.image_patches[0][1]
-        ):
-            if idx_img % 400 == 0:
-                logging.info(f"  - Predicting probabilities for mask {idx_img}")
-            image = dataset_train[idx_img][0].unsqueeze(0).to(device)
-
-            if "segmentation_models_pytorch" in type(model).__module__:
-                # Cas segmentation_models_pytorch
-                logits = model(image)
-                probs = torch.sigmoid(logits).half()
-            else:
-                probs = model.predict_probs(image).half()
-
-            dataset_train_proba.insert(probs)
-
-    # Visualiser le mask de proba prédit vs le mask binaire réel
-    # et calcule le meilleur seuil pour obtenir le plus grand F1-score
-    logging.info("= Show probabilities and compare to real masks")
-    data.show_predicted_mask_proba_vs_real_mask_binary(
-        dataset_train_proba, 0, dataset_train, "proba_compared_real_1.png"
-    )
-
-
-# TODO: merge sub and sub ensemble to a only function
-@amp_autocast
-def sub(config, use_tta=False):
-    device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
-    model_path = os.path.join(
-        config["test"]["model_path"], config["test"]["model_name"]
-    )
-
-    model_config = utils.load_model_config(config["test"])
-
-    logging.info("= Dataset")
-    dataset_test = data.PlanktonDataset(
-        config["data"]["testpath"], config["data"]["patch_size"], mode="test"
-    )
-    logging.info(f"  -  number of sample: {len(dataset_test)}")
-    input_size = tuple(dataset_test[0].shape)
-    num_classes = input_size[0]
-
-    logging.info("= Model")
-    model = utils.build_and_load_model(
-        model_config, input_size, num_classes, model_path, device
-    )
-
-    apply_sigmoid = model_config["encoder"]["model_name"] == "timm-regnety_032"
-
-    # Activation de TTA uniquement si use_tta est True
-    if use_tta:
-        model = utils.apply_tta(model, use_tta)
-
-    logging.info("= Predict masks for all test images")
-    for image_idx, (num_patches_x, num_patches_y) in enumerate(
-        dataset_test.image_patches
-    ):
-        logging.info(f"Predicting patches for image {image_idx}")
-        base_idx = sum(
-            x * y for x, y in dataset_test.image_patches[:image_idx]
-        )  # Precompute base index
-
-        for idx_patch in range(num_patches_x * num_patches_y):
-            global_idx = base_idx + idx_patch
-            image = dataset_test[global_idx].unsqueeze(0).to(device)
-
-            with torch.inference_mode():
-                prediction = model(image).squeeze(0)
-
-            # Apply sigmoid + threshold only for RegNetY models because it ouputs logits
-            threshold = 0.5
-            if apply_sigmoid:
-                prediction = torch.sigmoid(prediction)
-            pred_binaire = (prediction > threshold).int()
-            dataset_test.insert(pred_binaire)
-
-    logging.info("= To submit")
-    dataset_test.to_submission()
-
-
-# TODO: merge sub and sub ensemble to a only function
-@amp_autocast
-def sub_ensemble(config):
-    """Effectue une prédiction par ensemble de modèles."""
+    """
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    use_tta = config.get("use_tta", True)
+    models_dir_path = config["test"].get("models_dir", "~/logs/")
+    models_dir_path = os.path.expanduser(models_dir_path)
+    models_name = config["test"].get("models_name", "UNet_0")
+    model_weight_name = config["test"].get("model_weight_name", "best_model.pt")
+    model_config_name = config["test"].get("model_config_name", "config.yaml")
 
+    # Find Models Path
+    models_dir = [
+        os.path.join(models_dir_path, model_name)
+        for model_name in models_name
+        if os.path.isdir(os.path.join(models_dir_path, model_name))
+    ]
+
+    # Load Configs
+    models_config, patch_sizes = utils.load_configs(models_dir, model_config_name)
+
+    # Load Dataset
     logging.info("= Dataset")
-    dataset_test = data.PlanktonDataset(
-        config["data"]["testpath"], config["data"]["patch_size"], mode="test"
-    )
+    test_path = config["data"]["testpath"]
+    dataset_test = data.PlanktonDataset(test_path, patch_sizes[0], mode="test")
     input_size = tuple(dataset_test[0].shape)
     num_classes = input_size[0]
     logging.info(f"  -  Number of samples: {len(dataset_test)}")
 
-    # **Trouver tous les modèles dans `ensemble_models/`**
-    ensemble_dir = "ensemble_models/"
-    model_dirs = [
-        os.path.join(ensemble_dir, d)
-        for d in os.listdir(ensemble_dir)
-        if os.path.isdir(os.path.join(ensemble_dir, d))
-    ]
-    model_paths = [
-        os.path.join(d, "best_model.pt")
-        for d in model_dirs
-        if os.path.exists(os.path.join(d, "best_model.pt"))
-    ]
+    # Find Model Weight Files
+    models_weight_path = utils.find_models_weight_path(model_weight_name, models_dir)
 
-    logging.info(f"Found {len(model_paths)} models in {ensemble_dir}: {model_paths}")
+    # Load Models
+    logging.info("= Loading Model(s)")
+    models = utils.load_models(
+        device, use_tta, models_config, input_size, num_classes, models_weight_path
+    )
 
-    if not model_paths:
-        logging.error(
-            "No models found for ensembling! Check your ensemble_models/ directory."
-        )
-        return
+    # Predict Masks
+    logging.info("= Predict masks")
+    utils.predict_masks(device, dataset_test, models)
 
-    # **Chargement des modèles**
-    logging.info("= Loading Models")
-    models_list = []
-
-    for model_path in model_paths:
-        config_path = os.path.join(os.path.dirname(model_path), "config.yaml")
-        logging.info(f"Loading model: {model_path} with config: {config_path}")
-
-        # Charger la configuration du modèle
-        with open(config_path) as f:
-            model_data = yaml.safe_load(f)
-        model_config = model_data["model"]
-
-        # Construire et charger le modèle
-        model = utils.build_and_load_model(
-            model_config, input_size, num_classes, model_path, device
-        )
-
-        if use_tta:
-            model = utils.apply_tta(model, use_tta)
-
-        models_list.append(model)
-
-    if not models_list:
-        logging.error("No valid models could be loaded! Aborting ensemble prediction.")
-        return
-
-    logging.info(f"Loaded {len(models_list)} models successfully!")
-
-    # **Prédictions pour toutes les images**
-    logging.info("= Predict masks for all test images using ensemble")
-
-    for image_idx, (num_patches_x, num_patches_y) in enumerate(
-        dataset_test.image_patches
-    ):
-        logging.info(f"Predicting patches for image {image_idx}")
-
-        for idx_patch in range(num_patches_x * num_patches_y):
-            global_idx = idx_patch + sum(
-                x * y for x, y in dataset_test.image_patches[:image_idx]
-            )  # Calcul de l'index global
-
-            image = dataset_test[global_idx].unsqueeze(0).to(device)
-
-            # Moyenne des prédictions de tous les modèles
-            predictions = [torch.sigmoid(model(image)) for model in models_list]
-            avg_prediction = torch.mean(torch.stack(predictions), dim=0)
-
-            # Appliquer un seuil pour la segmentation binaire
-            binary_prediction = (avg_prediction > 0.5).long()
-            dataset_test.insert(binary_prediction)
-
-    # **Sauvegarde de la soumission**
-    logging.info("= Saving ensemble submission")
+    # Create submission file
+    logging.info("= Creating submission")
     dataset_test.to_submission()
-    logging.info("Ensemble submission saved successfully!")
+    logging.info("Submission saved successfully!")
 
 
 if __name__ == "__main__":
@@ -439,33 +242,22 @@ if __name__ == "__main__":
 
     # check in advance if cuda is available
     if torch.cuda.is_available():
-        print(f"CUDA is available! Device name: {torch.cuda.get_device_name(0)}")
+        logging.info(f"CUDA is available! Device name: {torch.cuda.get_device_name(0)}")
     else:
-        print("CUDA is NOT available.")
+        logging.error("CUDA is NOT available.")
 
     parser = argparse.ArgumentParser()
     parser.add_argument("config", help="Path to config.yaml")
     parser.add_argument(
         "command",
-        choices=["train", "test", "test_proba", "sub", "sub_ensemble"],
+        choices=["train", "test", "sub"],
         help="Command to execute",
     )
 
-    # TODO: move concerne in the config file
-    parser.add_argument(
-        "--tta", action="store_true", help="Enable Test-Time Augmentation (TTA)"
-    )  # Par défaut, False
     args = parser.parse_args()
 
     logging.info(f"Loading configuration from {args.config}")
     with open(args.config) as f:
         config = yaml.safe_load(f)
 
-    # activer avec --tta, sinon désactivé
-    use_tta = args.tta
-
-    # Exécuter la commande demandée
-    if args.command == "sub":
-        sub(config, use_tta)
-    else:
-        eval(f"{args.command}(config)")
+    eval(f"{args.command}(config)")

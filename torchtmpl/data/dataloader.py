@@ -32,19 +32,16 @@ def get_dataloaders(data_config, use_cuda):
     batch_size = data_config["batch_size"]
     num_workers = data_config["num_workers"]
     quick_test = data_config["quick_test"]
+    transform_type = data_config.get("transform_type", "light")
 
     logging.info("  - Dataset creation (PlanktonDataset)")
-    transform_type = data_config.get(
-        "transform_type", "default"
-    )  # Par défaut, transformations légères
+    logging.info(f"  - Transformation: {transform_type}")
     transform = get_transforms(transform_type)
     base_dataset = planktonds.PlanktonDataset(
         image_mask_dir=data_config["trainpath"],
         patch_size=data_config["patch_size"],
         mode="train",
-        transform=transform,  # On met quand même la transformation, mais activée que pour train
-        apply_transform=False,  # On désactive par défaut car on va
-        # l'activer apres seulement pour le train_dataset
+        transform=transform,
     )
 
     logging.info(f"  - I loaded {len(base_dataset)} samples")
@@ -55,17 +52,17 @@ def get_dataloaders(data_config, use_cuda):
     if quick_test:  # Mode test rapide
         train_indices = indices[0:1800]
         valid_indices = indices[1800:2000]
-        logging.info("Quick test mode enabled: Using a small subset of the dataset.")
+        logging.info(
+            "  - Quick test mode enabled: Using a small subset of the dataset."
+        )
     else:
         train_indices = indices[num_valid:]
         valid_indices = indices[:num_valid]
 
     train_dataset = torch.utils.data.Subset(base_dataset, train_indices)
-    valid_dataset = torch.utils.data.Subset(base_dataset, valid_indices)
+    train_dataset.dataset.apply_transform = True
 
-    # Activer les transformations seulement pour train
-    train_dataset.dataset.apply_transform = True  #
-    # !! Nécessaire pour que valid dataset reste false !!
+    valid_dataset = torch.utils.data.Subset(base_dataset, valid_indices)
 
     # Build the dataloaders
     train_loader = torch.utils.data.DataLoader(
