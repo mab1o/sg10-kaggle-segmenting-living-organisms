@@ -121,7 +121,7 @@ def train(model, loader, f_loss, optimizer, device, dynamic_display=True):
 
         # Clipping des gradients pour éviter les explosions de gradients
         scaler.unscale_(optimizer)  # Nécessaire avant clip_grad_norm_ avec AMP
-        torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=5.0)
+        torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
 
         scaler.step(optimizer)
         scaler.update()

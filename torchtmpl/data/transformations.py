@@ -262,6 +262,37 @@ def get_transforms(transform_type="light"):  # noqa: C901
             ),
         ])
 
+
+    elif transform_type == "light-optimal+elastic":
+        return A.Compose([
+            A.Affine(
+                scale=(0.97, 1.03),               # Variation très légère d'échelle
+                translate_percent=(0.01, 0.01),     # Très petites translations
+                rotate=(-3, 3),                   # Petite rotation
+                p=0.5,
+            ),
+            A.VerticalFlip(p=0.3),
+            A.HorizontalFlip(p=0.3),
+            A.RandomBrightnessContrast(
+                brightness_limit=0.05, contrast_limit=0.05, p=0.15
+            ),
+            A.ElasticTransform(
+            alpha=40,                # Increased to introduce more realistic deformations
+            sigma=8,                 # Lower value for finer, localized distortions
+            interpolation=1,         # Bilinear interpolation for smooth deformation
+            approximate=False,       # Ensures full computation (better accuracy)
+            same_dxdy=True,          # Keeps distortions more realistic for plankton shapes
+            mask_interpolation=0,    # Nearest-neighbor for binary segmentation masks
+            noise_distribution="gaussian",  # Gaussian noise distribution
+            keypoint_remapping_method="mask",
+            p=0.3                    # 30% probability of applying the transform
+            ),
+
+        ])
+
+
+
+
     elif transform_type == "heavy-optimal":
         return A.Compose([
             A.Affine(
@@ -280,7 +311,15 @@ def get_transforms(transform_type="light"):  # noqa: C901
                 num_steps=5, distort_limit=0.1, p=0.3
             ),
             A.ElasticTransform(
-                alpha=2, sigma=30, alpha_affine=20, p=0.3
+                alpha=40,                # Increased to introduce more realistic deformations
+                sigma=8,                 # Lower value for finer, localized distortions
+                interpolation=1,         # Bilinear interpolation for smooth deformation
+                approximate=False,       # Ensures full computation (better accuracy)
+                same_dxdy=True,          # Keeps distortions more realistic for plankton shapes
+                mask_interpolation=0,    # Nearest-neighbor for binary segmentation masks
+                noise_distribution="gaussian",  # Gaussian noise distribution
+                keypoint_remapping_method="mask",
+                p=0.3                    # 30% probability of applying the transform
             ),
             A.CoarseDropout(
                 num_holes_range=(2, 4),
