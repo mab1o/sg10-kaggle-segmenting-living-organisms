@@ -7,7 +7,7 @@ data:
   valid_ratio: 0.1
   patch_size: [256, 256]
   quick_test: False
-  transform_type: "medium-best"
+  transform_type: "light-optimal"
 
 optim:
   algo: AdamW
@@ -18,10 +18,10 @@ optim:
 scheduler:
   class: CosineAnnealingLR
   params:
-    T_max: 50  # Mettre le nombre total d'epochs
-    eta_min: 0.000001
+    T_max: 200  # Mettre le nombre total d'epochs
+    eta_min: 0.00001
 
-nepochs: 50  # Augmenté pour convergence optimale
+nepochs: 200  # Augmenté pour convergence optimale
 pos_weight: 1
 
 loss:
