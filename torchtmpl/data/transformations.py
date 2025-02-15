@@ -160,11 +160,11 @@ def get_transforms(transform_type="light"):  # noqa: C901
             A.GaussianBlur(blur_limit=(1, 3), p=0.1),
             A.RandomBrightnessContrast(brightness_limit=0.1, contrast_limit=0.1, p=0.2),
             A.CoarseDropout(
-                num_holes_range=(1, 2),      # équivalent à max_holes=2
-                hole_height_range=(15, 15),   # hauteur fixe de 15
-                hole_width_range=(15, 15),    # largeur fixe de 15
+                num_holes_range=(1, 2),  # équivalent à max_holes=2
+                hole_height_range=(15, 15),  # hauteur fixe de 15
+                hole_width_range=(15, 15),  # largeur fixe de 15
                 fill=0,
-                p=0.08
+                p=0.08,
             ),
         ])
 
@@ -184,11 +184,11 @@ def get_transforms(transform_type="light"):  # noqa: C901
             ),
             A.GaussNoise(var_limit=(5.0, 25.0), p=0.15),
             A.CoarseDropout(
-                num_holes_range=(1, 3),      # équivalent à max_holes=3
-                hole_height_range=(20, 20),   # hauteur fixe de 20
-                hole_width_range=(20, 20),    # largeur fixe de 20
+                num_holes_range=(1, 3),  # équivalent à max_holes=3
+                hole_height_range=(20, 20),  # hauteur fixe de 20
+                hole_width_range=(20, 20),  # largeur fixe de 20
                 fill=0,
-                p=0.1
+                p=0.1,
             ),
         ])
 
@@ -207,17 +207,13 @@ def get_transforms(transform_type="light"):  # noqa: C901
             A.RandomBrightnessContrast(brightness_limit=0.2, contrast_limit=0.2, p=0.3),
             A.GaussNoise(var_limit=(10.0, 40.0), p=0.2),
             A.CoarseDropout(
-                num_holes_range=(1, 4),      # équivalent à max_holes=4
-                hole_height_range=(25, 25),   # hauteur fixe de 25
-                hole_width_range=(25, 25),    # largeur fixe de 25
+                num_holes_range=(1, 4),  # équivalent à max_holes=4
+                hole_height_range=(25, 25),  # hauteur fixe de 25
+                hole_width_range=(25, 25),  # largeur fixe de 25
                 fill=0,
-                p=0.15
+                p=0.15,
             ),
         ])
-
-    
-
-
 
     elif transform_type == "medium-optimal":
         return A.Compose([
@@ -246,13 +242,12 @@ def get_transforms(transform_type="light"):  # noqa: C901
             ),
         ])
 
-
     elif transform_type == "light-optimal":
         return A.Compose([
             A.Affine(
-                scale=(0.97, 1.03),               # Variation très légère d'échelle
-                translate_percent=(0.01, 0.01),     # Très petites translations
-                rotate=(-3, 3),                   # Petite rotation
+                scale=(0.97, 1.03),  # Variation très légère d'échelle
+                translate_percent=(0.01, 0.01),  # Très petites translations
+                rotate=(-3, 3),  # Petite rotation
                 p=0.5,
             ),
             A.VerticalFlip(p=0.3),
@@ -261,14 +256,13 @@ def get_transforms(transform_type="light"):  # noqa: C901
                 brightness_limit=0.05, contrast_limit=0.05, p=0.15
             ),
         ])
-
 
     elif transform_type == "light-optimal+elastic":
         return A.Compose([
             A.Affine(
-                scale=(0.97, 1.03),               # Variation très légère d'échelle
-                translate_percent=(0.01, 0.01),     # Très petites translations
-                rotate=(-3, 3),                   # Petite rotation
+                scale=(0.97, 1.03),  # Variation très légère d'échelle
+                translate_percent=(0.01, 0.01),  # Très petites translations
+                rotate=(-3, 3),  # Petite rotation
                 p=0.5,
             ),
             A.VerticalFlip(p=0.3),
@@ -277,49 +271,41 @@ def get_transforms(transform_type="light"):  # noqa: C901
                 brightness_limit=0.05, contrast_limit=0.05, p=0.15
             ),
             A.ElasticTransform(
-            alpha=40,                # Increased to introduce more realistic deformations
-            sigma=8,                 # Lower value for finer, localized distortions
-            interpolation=1,         # Bilinear interpolation for smooth deformation
-            approximate=False,       # Ensures full computation (better accuracy)
-            same_dxdy=True,          # Keeps distortions more realistic for plankton shapes
-            mask_interpolation=0,    # Nearest-neighbor for binary segmentation masks
-            noise_distribution="gaussian",  # Gaussian noise distribution
-            keypoint_remapping_method="mask",
-            p=0.3                    # 30% probability of applying the transform
+                alpha=40,  # Increased to introduce more realistic deformations
+                sigma=8,  # Lower value for finer, localized distortions
+                interpolation=1,  # Bilinear interpolation for smooth deformation
+                approximate=False,  # Ensures full computation (better accuracy)
+                same_dxdy=True,  # Keeps distortions more realistic for plankton shapes
+                mask_interpolation=0,  # Nearest-neighbor for binary segmentation masks
+                noise_distribution="gaussian",  # Gaussian noise distribution
+                keypoint_remapping_method="mask",
+                p=0.3,  # 30% probability of applying the transform
             ),
-
         ])
-
-
-
 
     elif transform_type == "heavy-optimal":
         return A.Compose([
             A.Affine(
-                scale=(0.90, 1.10),               # Variation plus importante d'échelle
-                translate_percent=(0.04, 0.04),     # Translations plus marquées
-                rotate=(-12, 12),                 # Rotation étendue
-                shear=(-5, 5),                    # Ajout d'un léger cisaillement
+                scale=(0.90, 1.10),  # Variation plus importante d'échelle
+                translate_percent=(0.04, 0.04),  # Translations plus marquées
+                rotate=(-12, 12),  # Rotation étendue
+                shear=(-5, 5),  # Ajout d'un léger cisaillement
                 p=0.75,
             ),
             A.VerticalFlip(p=0.55),
             A.HorizontalFlip(p=0.55),
-            A.RandomBrightnessContrast(
-                brightness_limit=0.2, contrast_limit=0.2, p=0.3
-            ),
-            A.GridDistortion(
-                num_steps=5, distort_limit=0.1, p=0.3
-            ),
+            A.RandomBrightnessContrast(brightness_limit=0.2, contrast_limit=0.2, p=0.3),
+            A.GridDistortion(num_steps=5, distort_limit=0.1, p=0.3),
             A.ElasticTransform(
-                alpha=40,                # Increased to introduce more realistic deformations
-                sigma=8,                 # Lower value for finer, localized distortions
-                interpolation=1,         # Bilinear interpolation for smooth deformation
-                approximate=False,       # Ensures full computation (better accuracy)
-                same_dxdy=True,          # Keeps distortions more realistic for plankton shapes
-                mask_interpolation=0,    # Nearest-neighbor for binary segmentation masks
+                alpha=40,  # Increased to introduce more realistic deformations
+                sigma=8,  # Lower value for finer, localized distortions
+                interpolation=1,  # Bilinear interpolation for smooth deformation
+                approximate=False,  # Ensures full computation (better accuracy)
+                same_dxdy=True,  # Keeps distortions more realistic for plankton shapes
+                mask_interpolation=0,  # Nearest-neighbor for binary segmentation masks
                 noise_distribution="gaussian",  # Gaussian noise distribution
                 keypoint_remapping_method="mask",
-                p=0.3                    # 30% probability of applying the transform
+                p=0.3,  # 30% probability of applying the transform
             ),
             A.CoarseDropout(
                 num_holes_range=(2, 4),
@@ -330,8 +316,6 @@ def get_transforms(transform_type="light"):  # noqa: C901
             ),
             A.MotionBlur(blur_limit=5, p=0.1),
         ])
-
-
 
     # Default to light if incorrect input
     print("No transformation selected")

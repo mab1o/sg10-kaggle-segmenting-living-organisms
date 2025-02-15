@@ -14,7 +14,7 @@ import wandb
 import yaml
 
 # Local imports
-from . import data, models, optim, utils
+from . import data, optim, utils
 from .utils import amp_autocast
 
 if torch.cuda.is_available():
@@ -315,7 +315,7 @@ def sub(config, use_tta=False):
     logging.info("= Model")
     inference = True
     model = utils.build_and_load_model(
-        model_config, input_size, num_classes, model_path, device, inference
+        model_config, input_size, num_classes, device, inference, model_path
     )
 
     apply_sigmoid = model_config["encoder"]["model_name"] == "timm-regnety_032"

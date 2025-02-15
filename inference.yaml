@@ -8,7 +8,7 @@ data:
   num_workers: 8
 
 test:
-  model_path: 'ensemble_models/B4_conservative_0.8951/'
+  model_path: 'ensemble_models/EfficientNetB4_local_0.9295/'
   model_name: 'best_model.pt'
   model_config: 'config.yaml'
   use_train: false # Set to true to add extra visualization in test and test_proba

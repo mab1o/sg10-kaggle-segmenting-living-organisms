@@ -261,11 +261,11 @@ def build_and_load_model(
     if inference:
         if model_path is None:
             raise ValueError("model_path must be provided in inference mode.")
-        model.load_state_dict(
-            torch.load(model_path, map_location=device, weights_only=True)
-        )
-        model.eval()
 
+        state_dict = torch.load(model_path, map_location=device, weights_only=True)
+        state_dict = {k.replace("_orig_mod.", ""): v for k, v in state_dict.items()}
+        model.load_state_dict(state_dict, strict=False)
+        model.eval()
     return model
 
 
