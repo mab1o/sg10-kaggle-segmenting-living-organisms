@@ -1,0 +1,6 @@
+train_from:
+  model_dir: '/usr/users/sdim/sdim_8/logs/EfficientNetB3Segmentation_0_20250215-152302'
+  model_weight_name: 'best_model.pt'
+  model_config_name: 'config.yaml'
+  model_checkpoint_name: 'checkpoint.pt'
+  model_dataset_name: 'dataset.pt'

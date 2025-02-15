@@ -16,6 +16,13 @@ from .utils import amp_autocast
 if torch.cuda.is_available():
     os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "expandable_segments:True"
 
+# Define level of log
+logging.basicConfig(
+    level=logging.DEBUG,
+    format="%(asctime)s - %(levelname)s - %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S",
+)
+
 
 def train(config):
     """Train a model based on the provided configuration.
@@ -32,6 +39,9 @@ def train(config):
     """
     use_cuda = torch.cuda.is_available()
     device = torch.device("cuda") if use_cuda else torch.device("cpu")
+
+    # Check if first train or continue train
+    first_train, config, logdir = utils.update_config_train(config)
 
     # Initialisation de wandb si activé
     if "wandb" in config["logging"]:
@@ -55,18 +65,6 @@ def train(config):
     model = models.build_model(model_config, input_size, num_classes)
     model.to(device)
 
-    # TODO : change this part to its own function
-    # Charger le modèle pré-entraîné si un chemin est spécifié
-    if "pretrained_model" in config and os.path.exists(config["pretrained_model"]):
-        logging.info(f"Loading pretrained model from {config['pretrained_model']}")
-        model.load_state_dict(
-            torch.load(
-                config["pretrained_model"], map_location=device, weights_only=True
-            )
-        )
-    # else:
-    # logging.warning("No pretrained model found, training from scratch.")
-
     # Build the loss
     logging.info("= Loss")
     loss = optim.get_loss(config["loss"]["name"], config["loss"])
@@ -80,17 +78,39 @@ def train(config):
     scheduler = optim.get_scheduler(optimizer, config["scheduler"])
 
     # Create dir to save all informations and the weight of the model
-    logdir = utils.create_doc_save_model(
-        config, wandb_log, train_loader, valid_loader, model_config, model, loss
+    if first_train:
+        logdir = utils.create_doc_save_model(
+            config, wandb_log, train_loader, valid_loader, model_config, model, loss
+        )
+        utils.save_datasets_indice(
+            train_loader, valid_loader, str(logdir / "dataset.pt")
+        )
+
+    # Initialisation of checkpoint if needed
+    start_epoch, best_loss = utils.load_checkpoint(
+        model,
+        optimizer,
+        scheduler,
+        train_loader,
+        valid_loader,
+        str(logdir / "checkpoint.pt"),
+        str(logdir / "dataset.pt"),
+        device,
     )
 
     # Initialisation du checkpointing
     model_checkpoint = utils.ModelCheckpoint(
-        model, str(logdir / "best_model.pt"), min_is_best=False
+        model,
+        optimizer,
+        scheduler,
+        str(logdir / "best_model.pt"),
+        str(logdir / "checkpoint.pt"),
+        min_is_best=False,
+        best_score=best_loss,
     )
 
     logging.info("= Start training")
-    for e in range(config["nepochs"]):
+    for e in range(start_epoch, config["nepochs"]):
         # Train 1 epoch
         train_loss = utils.train(
             model, train_loader, loss, optimizer, scheduler, device
@@ -100,7 +120,7 @@ def train(config):
         )
 
         # Mise à jour du checkpoint si meilleur F1-score
-        updated = model_checkpoint.update(test_f1)
+        updated = model_checkpoint.update(test_f1, e)
         logging.info(
             f"[{e}/{config['nepochs']}] Test loss : {test_loss:.4f}, Precision : {test_precision:.4f}, "
             f"Recall : {test_recall:.4f}, Test F1-score : {test_f1:.4f} "
@@ -240,12 +260,13 @@ def sub(config):
 if __name__ == "__main__":
     logging.basicConfig(stream=sys.stdout, level=logging.INFO, format="%(message)s")
 
-    # check in advance if cuda is available
+    # Check in advance if cuda is available
     if torch.cuda.is_available():
         logging.info(f"CUDA is available! Device name: {torch.cuda.get_device_name(0)}")
     else:
         logging.error("CUDA is NOT available.")
 
+    # Lauch command
     parser = argparse.ArgumentParser()
     parser.add_argument("config", help="Path to config.yaml")
     parser.add_argument(

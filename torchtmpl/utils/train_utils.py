@@ -64,53 +64,6 @@ def generate_unique_logpath(logdir, raw_run_name):
         i += 1
 
 
-class ModelCheckpoint:
-    """Callback class to save the model whenever a better score is achieved.
-
-    Args:
-        model (torch.nn.Module): The model to monitor.
-        savepath (str): The file path to save the model.
-        min_is_best (bool): If True, the model with the lowest score is considered the best.
-                            If False, the model with the highest score is considered the best.
-
-    """
-
-    def __init__(
-        self,
-        model: torch.nn.Module,
-        savepath: str,
-        min_is_best: bool = True,
-    ) -> None:
-        """Initialize a modelCheckpint instance.
-
-        Args:
-            model (torch.nn.Module): The model to monitor.
-            savepath (str): The file path where to save the model
-            min_is_best (bool, optional): Boolean to keep the lowest score. Defaults to True.
-
-        """
-        self.model = model
-        self.savepath = savepath
-        self.best_score = None
-        if min_is_best:
-            self.is_better = self.lower_is_better
-        else:
-            self.is_better = self.higher_is_better
-
-    def lower_is_better(self, score):
-        return self.best_score is None or score < self.best_score
-
-    def higher_is_better(self, score):
-        return self.best_score is None or score > self.best_score
-
-    def update(self, score):
-        if self.is_better(score):
-            torch.save(self.model.state_dict(), self.savepath)
-            self.best_score = score
-            return True
-        return False
-
-
 def train(model, loader, f_loss, optimizer, scheduler, device, dynamic_display=True):
     """Train the model for one epoch using the provided data loader.
 
