@@ -219,11 +219,11 @@ class SegFormerEncoder(nn.Module):
         return x
 
 
-class SegFormer(nn.Module):
+class SegFormer_custom(nn.Module):
     """
     SegFormer: Basic implementation of arXiv:2105.15203 
     """
-    def __init__(self, config=None):
+    def __init__(self, cfg, input_size, num_classes):
         super().__init__()
         
         # presets : we define presets to limit tuning complexity
@@ -250,42 +250,53 @@ class SegFormer(nn.Module):
             }
         }
         
-        # Base configuration with reasonable defaults
-        self.config = {
-            'img_size': 256,
+        # Base cfguration with reasonable defaults
+        self.cfg = {}
+        
+        # Use input_size parameter - could be tuple or int
+        if isinstance(input_size, tuple):
+            img_size = input_size[0]  # Assuming square images for simplicity
+        else:
+            img_size = input_size
+
+        # Default cfguration
+        default_cfg = {
+            'img_size': img_size,
             'in_channels': 3,
-            'num_classes': 1,
-            'preset': 'tiny',            # preset, I mark with 'ovr' the overriden parameters
-            'embed_dims': [64, 128, 256, 512],  # ovr
-            'num_heads': [1, 2, 4, 8],         # ovr
-            'depths': [3, 4, 6, 3],            # ovr
-            'dropout': 0.2,                    
-            'drop_path': 0.1,                
-            'mlp_ratio': 4,                    
-            'sr_ratios': [8, 4, 2, 1]          # spatial reduction ratios
+            'preset': 'tiny',
+            'embed_dims': [64, 128, 256, 512],
+            'num_heads': [1, 2, 4, 8],
+            'depths': [3, 4, 6, 3],
+            'dropout': 0.2,
+            'drop_path': 0.1,
+            'mlp_ratio': 4,
+            'sr_ratios': [8, 4, 2, 1]
         }
         
-
-        if config:
-            self.config.update(config)
+        # First update with default cfg
+        self.cfg.update(default_cfg)
+        
+        # Then update with user cfg
+        if cfg:
+            self.cfg.update(cfg)
         
         # Apply preset 
-        if 'preset' in self.config and self.config['preset'] in model_presets:
-            preset_name = self.config['preset']
-            preset_config = model_presets[preset_name]
-            for key, value in preset_config.items():
-                self.config[key] = value
+        preset_name = self.cfg.get('preset', 'tiny')
+        if preset_name in model_presets:
+            preset_cfg = model_presets[preset_name]
+            for key, value in preset_cfg.items():
+                self.cfg[key] = value
   
-        img_size = self.config['img_size']
-        in_channels = self.config['in_channels']
-        num_classes = self.config['num_classes']
-        embed_dims = self.config['embed_dims']
-        num_heads = self.config['num_heads']
-        depths = self.config['depths']
-        dropout = self.config['dropout']
-        drop_path = self.config['drop_path']
-        mlp_ratio = self.config['mlp_ratio']
-        sr_ratios = self.config['sr_ratios']
+        # Get cfguration values with defaults if missing
+        img_size = self.cfg.get('img_size', 256)
+        in_channels = self.cfg.get('in_channels', 3)
+        embed_dims = self.cfg.get('embed_dims', [64, 128, 256, 512])
+        num_heads = self.cfg.get('num_heads', [1, 2, 4, 8])
+        depths = self.cfg.get('depths', [3, 4, 6, 3])
+        dropout = self.cfg.get('dropout', 0.2)
+        drop_path = self.cfg.get('drop_path', 0.1)
+        mlp_ratio = self.cfg.get('mlp_ratio', 4)
+        sr_ratios = self.cfg.get('sr_ratios', [8, 4, 2, 1])
         
         self.depths = depths
         self.embed_dims = embed_dims
@@ -381,16 +392,17 @@ class SegFormer(nn.Module):
 
 
 def test_segformer():
-    config = {
-        'img_size': 256,
+    cfg = {
         'in_channels': 3,
-        'num_classes': 1,
         'preset': 'tiny',  # Use the tiny preset (large has 25 times more params)
         'dropout': 0.1     
     }
     
-    model = SegFormer(config)
-    print(f"Model created with preset: {config['preset']}")
+    input_size = 256
+    num_classes = 1
+    
+    model = SegFormer_custom(cfg, input_size, num_classes)
+    print(f"Model created with preset: {cfg['preset']}")
     
     x = torch.randn(2, 3, 256, 256)
     
