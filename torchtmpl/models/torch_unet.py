@@ -64,28 +64,31 @@ class Decoder(nn.Module):
             x = self.decoder_blocks[i](x)
         return x
 
-class UNet(nn.Module):
+class UNet_custom(nn.Module):
     """
     Simple UNet implementation for plankton segmentation
+
+    Important note: 
+        This implementation doesn't require the input size parameter thanks to
+            - Standard convolutions that preserve spatial dimensions (with padding=1)
+            - The decoder has padding logic to handle potential size mismatches
+        
+        However we still implement it to be consistent with the other models from the project
     """
-    def __init__(self, config=None):
+    def __init__(self, cfg, input_size, num_classes):
         super().__init__()
         
-        self.config = {
-            'in_channels': 1,
-            'out_channels': 1,
-            'encoder_channels': [1, 64, 128, 256, 512, 1024],
-            'dropout': 0.2
-        }
+        self.cfg = {}
         
-        # Update with provided config
-        if config:
-            self.config.update(config)
+        # Update with provided cfg
+        if cfg:
+            self.cfg.update(cfg)
         
-        # Extract config values
-        in_channels = self.config['in_channels']
-        out_channels = self.config['out_channels']
-        encoder_channels = self.config['encoder_channels']
+        # Extract cfg values with defaults
+        in_channels = self.cfg.get('in_channels', 1)
+        out_channels = num_classes  # Use num_classes as out_channels
+        encoder_channels = self.cfg.get('encoder_channels', [in_channels, 64, 128, 256, 512, 1024])
+        dropout_rate = self.cfg.get('dropout', 0.2)
         
         # Make sure first encoder channel matches in_channels
         encoder_channels[0] = in_channels
@@ -95,10 +98,9 @@ class UNet(nn.Module):
         decoder_channels = encoder_channels[-1:0:-1]
         self.decoder = Decoder(decoder_channels)
         
-        # Final convolution to get the desired number of output channels
         self.final_conv = nn.Conv2d(encoder_channels[1], out_channels, kernel_size=1)
         
-        self.dropout = nn.Dropout2d(self.config['dropout'])
+        self.dropout = nn.Dropout2d(dropout_rate)
     
     def forward(self, x):
         encoder_features = self.encoder(x)
@@ -123,15 +125,17 @@ class UNet(nn.Module):
 
 # Simple test to check the dimensions 
 def test_unet():
-    config = {
-        'in_channels': 1,  
-        'out_channels': 1, # 
+    cfg = {
+        'in_channels': 1,
         'encoder_channels': [1, 64, 128, 256, 512],  
         'dropout': 0.2
     }
     
-    model = UNet()
-    print(f"Model created with configuration: {config}")
+    input_size = (256, 256)
+    num_classes = 1
+    
+    model = UNet_custom(cfg, input_size, num_classes)
+    print(f"Model created with cfguration: {cfg}")
     
     # dummy input
     x = torch.randn(2, 1, 256, 256)
@@ -149,5 +153,4 @@ def test_unet():
     return model
 
 if __name__ == "__main__":
-
     test_unet()
