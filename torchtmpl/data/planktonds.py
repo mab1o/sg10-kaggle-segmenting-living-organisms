@@ -15,7 +15,7 @@ class PlanktonDataset(Dataset):
         self,
         image_mask_dir,
         patch_size,
-        redundancy,
+        redundancy=2,
         mode="train",
         transform=None,
         apply_transform=False,
@@ -29,7 +29,7 @@ class PlanktonDataset(Dataset):
         Args:
             image_mask_dir (str): Path to the directory containing images and masks.
             patch_size (tuple): Size of the square patch to extract (width, height).
-            redundancy (int): (Square root of) the number of times a given pixel appears in final the dataset.
+            redundancy (int, optional): (Square root of) the number of times a given pixel appears in final the dataset.
             mode (str): Either 'train' or 'test'.
             transform (list, optional): List of transformations to apply.
             apply_transform (bool, optional): If True, apply the transformations (used for train mode only).
