@@ -282,7 +282,7 @@ if __name__ == "__main__":
     config = yaml.safe_load(open(sys.argv[1]))
 
     # test_patch(config)
-    # test_PlanktonDataset_train(config)
+    test_plankton_dataset_train(config)
     # test_reconstruct_image(config)
     # test_dataloader(config)
     # test_size_plankton(config)
@@ -290,4 +290,4 @@ if __name__ == "__main__":
     # test_generate_csv_file(config)
     # test_PlanktonDataset_test(config)
     # test_augmented_data(config)
-    test_train_transform()
+    # test_train_transform()

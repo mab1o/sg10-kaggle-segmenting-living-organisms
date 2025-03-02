@@ -15,6 +15,7 @@ class PlanktonDataset(Dataset):
         self,
         image_mask_dir,
         patch_size,
+        redundancy,
         mode="train",
         transform=None,
         apply_transform=False,
@@ -28,6 +29,7 @@ class PlanktonDataset(Dataset):
         Args:
             image_mask_dir (str): Path to the directory containing images and masks.
             patch_size (tuple): Size of the square patch to extract (width, height).
+            redundancy (int): (Square root of) the number of times a given pixel appears in final the dataset.
             mode (str): Either 'train' or 'test'.
             transform (list, optional): List of transformations to apply.
             apply_transform (bool, optional): If True, apply the transformations (used for train mode only).
@@ -43,6 +45,7 @@ class PlanktonDataset(Dataset):
         self.apply_transform = apply_transform
         self.image_mask_dir = image_mask_dir
         self.patch_size = patch_size
+        self.redundancy = redundancy
         self.image_files = sorted([
             f for f in os.listdir(image_mask_dir) if f.endswith("_scan.png.ppm")
         ])
@@ -66,7 +69,7 @@ class PlanktonDataset(Dataset):
             self.images_size.append((width, height))
             self.image_patches.append(self._calculate_num_patches(width, height))
 
-        self.total_patches = sum(x * y for x, y in self.image_patches)
+        self.total_patches = sum(x * y for x, y in self.image_patches) #Might be an approximation if redundancy is not 1
 
     def _calculate_num_patches(self, width, height):
         """Calculate the number of patches in each dimension for a given image size.
@@ -82,8 +85,8 @@ class PlanktonDataset(Dataset):
         assert width > self.patch_size[0] and height > self.patch_size[1], (
             "Patch size is larger than the image dimensions."
         )
-        num_patches_x = -(-width // self.patch_size[0])
-        num_patches_y = -(-height // self.patch_size[1])
+        num_patches_x = -(-width * self.redundancy // self.patch_size[0])
+        num_patches_y = -(-height * self.redundancy // self.patch_size[1])
         return num_patches_x, num_patches_y
 
     def __len__(self):
@@ -111,11 +114,11 @@ class PlanktonDataset(Dataset):
         """
         assert idx < len(self), f"Index out of range: {idx}"
 
-        # Determine the image index and patch index within that image.
+        # Determine the image index and patch index within that image.    Shit's about to get fucked
         current_idx = idx
         image_idx = None
         for i, (num_patches_x, num_patches_y) in enumerate(self.image_patches):
-            num_patches = num_patches_x * num_patches_y
+            num_patches = num_patches_x * num_patches_y * (self.redundancy **2)
             if current_idx < num_patches:
                 image_idx = i
                 break
@@ -181,8 +184,8 @@ class PlanktonDataset(Dataset):
         patch_x = current_idx % num_patches_x
         patch_y = current_idx // num_patches_x
 
-        image_row = min(patch_height * patch_y, height - patch_height)
-        image_column = min(patch_width * patch_x, width - patch_width)
+        image_row = min(patch_height * patch_y // self.redundancy, height - patch_height) #These might introduce redundancy for the last redundancy patches of each row, I consider it negligible
+        image_column = min(patch_width * patch_x // self.redundancy, width - patch_width)
         return image_row, image_column
 
     def insert(self, mask_patch, idx=None):
